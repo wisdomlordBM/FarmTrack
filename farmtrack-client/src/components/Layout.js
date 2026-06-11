@@ -31,40 +31,43 @@ export default function Layout() {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-    {/* Logo */}
-<div className="p-6 border-b border-gray-100">
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center text-xl">
-        🐔
+      {/* Logo */}
+      <div className="p-6 border-b border-slate-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-emerald-700 rounded-2xl flex items-center justify-center text-2xl shadow-inner">
+              🐔
+            </div>
+            <div>
+              <div className="font-bold text-slate-900 text-2xl leading-none">FarmTrack</div>
+              <div className="text-xs text-slate-500 mt-0.5">Poultry Management</div>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate('/')}
+            className="p-2 rounded-xl hover:bg-slate-100 transition-all" 
+            title="Go to home"
+          >
+            <Home size={18} className="text-slate-400" />
+          </button>
+        </div>
       </div>
-      <div>
-        <div className="font-extrabold text-gray-900 text-lg leading-none">FarmTrack</div>
-        <div className="text-xs text-gray-400 mt-0.5">Farm Management</div>
-      </div>
-    </div>
-    <button onClick={() => navigate('/')}
-      className="p-2 rounded-xl hover:bg-gray-100 transition-all" title="Go to home">
-      <Home size={18} className="text-gray-400" />
-    </button>
-  </div>
-</div>
 
-      {/* User */}
-      <div className="px-4 py-4 border-b border-gray-100">
-        <div className="flex items-center gap-3 bg-green-50 rounded-xl px-3 py-3">
-          <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+      {/* User Info */}
+      <div className="px-4 py-5 border-b border-slate-100">
+        <div className="flex items-center gap-3 bg-emerald-50 rounded-2xl px-4 py-4">
+          <div className="w-10 h-10 bg-emerald-700 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow">
             {user?.fullName?.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-gray-800 text-sm truncate">{user?.fullName}</div>
-            <div className="text-xs text-green-600 font-medium">{user?.role}</div>
+            <div className="font-semibold text-slate-800 truncate">{user?.fullName}</div>
+            <div className="text-xs text-emerald-700 font-medium">{user?.role}</div>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      {/* Navigation */}
+      <nav className="flex-1 px-3 py-6 space-y-1">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -72,25 +75,25 @@ export default function Layout() {
             end={item.end}
             onClick={() => setMobileOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-sm transition-all ${
+              `flex items-center gap-3 px-4 py-3.5 rounded-2xl font-medium text-sm transition-all ${
                 isActive
-                  ? 'bg-green-600 text-white shadow-lg shadow-green-200'
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-200'
+                  : 'text-slate-600 hover:bg-slate-100'
               }`
             }
           >
             {item.icon}
             <span className="flex-1">{item.label}</span>
-            <ChevronRight size={14} className="opacity-40" />
+            <ChevronRight size={16} className="opacity-40" />
           </NavLink>
         ))}
       </nav>
 
       {/* Logout */}
-      <div className="p-4 border-t border-gray-100">
+      <div className="p-4 border-t border-slate-100 mt-auto">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 font-medium text-sm transition-all"
+          className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-red-600 hover:bg-red-50 font-medium text-sm transition-all"
         >
           <LogOut size={20} />
           Sign Out
@@ -100,24 +103,27 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 bg-white border-r border-gray-100 flex-col shadow-sm flex-shrink-0">
+      <aside className="hidden md:flex w-72 bg-white border-r border-slate-100 flex-col shadow-sm flex-shrink-0">
         <SidebarContent />
       </aside>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar */}
       <AnimatePresence>
         {mobileOpen && (
           <>
             <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 z-40 md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-40 md:hidden"
               onClick={() => setMobileOpen(false)}
             />
             <motion.aside
-              initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }}
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
               transition={{ type: 'spring', damping: 25 }}
               className="fixed left-0 top-0 bottom-0 w-72 bg-white z-50 md:hidden shadow-2xl"
             >
@@ -127,26 +133,29 @@ export default function Layout() {
         )}
       </AnimatePresence>
 
-      {/* Main */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-
-        {/* Mobile Topbar */}
-        <header className="md:hidden bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-          <button onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-xl hover:bg-gray-100 transition-all">
-            <Menu size={22} />
+        {/* Mobile Top Bar */}
+        <header className="md:hidden bg-white border-b border-slate-100 px-4 py-4 flex items-center justify-between">
+          <button 
+            onClick={() => setMobileOpen(true)}
+            className="p-2 rounded-xl hover:bg-slate-100 transition-all"
+          >
+            <Menu size={24} />
           </button>
+          
           <div className="flex items-center gap-2">
-            <span className="text-lg">🐔</span>
-            <span className="font-bold text-green-600">FarmTrack</span>
+            <span className="text-2xl">🐔</span>
+            <span className="font-bold text-emerald-700 text-lg">FarmTrack</span>
           </div>
-          <div className="w-9 h-9 bg-green-600 rounded-xl flex items-center justify-center text-white font-bold text-sm">
+
+          <div className="w-9 h-9 bg-emerald-700 rounded-2xl flex items-center justify-center text-white font-bold text-sm">
             {user?.fullName?.charAt(0).toUpperCase()}
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50">
           <Outlet />
         </main>
       </div>
