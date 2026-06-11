@@ -1,0 +1,28 @@
+﻿using System;
+using FarmTrack.Core.Entities;
+using FarmTrack.Core.Interfaces;
+using FarmTrack.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+
+namespace FarmTrack.Infrastructure.Repositories
+{
+    public class SaleRepository : GenericRepository<Sale>, ISaleRepository
+    {
+        public SaleRepository(AppDbContext context) : base(context) { }
+
+        public async Task<IEnumerable<Sale>> GetUnpaidSalesAsync()
+            => await _context.Sales
+                .Where(s => s.PaymentStatus != "Paid")
+                .OrderByDescending(s => s.SaleDate)
+                .ToListAsync();
+
+        public async Task<decimal> GetTotalRevenueThisMonthAsync()
+        {
+            var now = DateTime.UtcNow;
+            var sales = await _context.Sales
+                .Where(s => s.SaleDate.Month == now.Month && s.SaleDate.Year == now.Year)
+                .ToListAsync();
+            return sales.Sum(s => s.AmountPaid);
+        }
+    }
+}

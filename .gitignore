@@ -1,0 +1,16 @@
+# Backend
+bin/
+obj/
+*.user
+.vs/
+*.suo
+appsettings.Development.json
+
+# Frontend
+farmtrack-client/node_modules/
+farmtrack-client/build/
+farmtrack-client/.env
+
+# General
+.DS_Store
+Thumbs.db

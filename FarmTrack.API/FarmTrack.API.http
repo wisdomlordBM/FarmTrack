@@ -1,0 +1,6 @@
+@FarmTrack.API_HostAddress = http://localhost:5187
+
+GET {{FarmTrack.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="FarmTrack.API/FarmTrack.API.csproj" />
+  <Project Path="FarmTrack.Core/FarmTrack.Core.csproj" />
+  <Project Path="FarmTrack.Infrastructure/FarmTrack.Infrastructure.csproj" />
+</Solution>
