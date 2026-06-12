@@ -3,6 +3,7 @@ using FarmTrack.API.Helpers;
 using FarmTrack.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FarmTrack.API.Controllers
@@ -88,6 +89,52 @@ namespace FarmTrack.API.Controllers
                 return BadRequest(result.Errors);
 
             return Ok(new { message = "Admin account created successfully" });
+        }
+
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+                return BadRequest(new { message = "Email not found" });
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedToken = Uri.EscapeDataString(token);
+            var resetLink = $"http://localhost:3000/reset-password?token={encodedToken}&email={dto.Email}";
+
+            // Log to console for now — replace with email service when hosting
+            Console.WriteLine($"Password reset link for {dto.Email}: {resetLink}");
+
+            return Ok(new { message = "Reset link generated", resetLink });
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest dto)
+        {
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+                return BadRequest(new { message = "User not found" });
+
+            var decodedToken = Uri.UnescapeDataString(dto.Token);
+            var result = await _userManager.ResetPasswordAsync(user, decodedToken, dto.NewPassword);
+
+            if (!result.Succeeded)
+                return BadRequest(new { message = "Reset failed", errors = result.Errors });
+
+            return Ok(new { message = "Password reset successful" });
+        }
+        public class ForgotPasswordRequest
+        {
+            public string Email { get; set; } = string.Empty;
+        }
+
+        public class ResetPasswordRequest
+        {
+            public string Email { get; set; } = string.Empty;
+            public string Token { get; set; } = string.Empty;
+            public string NewPassword { get; set; } = string.Empty;
         }
     }
 }

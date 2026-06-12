@@ -16,10 +16,10 @@ namespace FarmTrack.Infrastructure.Repositories
         public BirdSaleRepository(AppDbContext context) : base(context) { }
 
         public async Task<IEnumerable<BirdSale>> GetAllWithFlockAsync()
-            => await _context.BirdSales
-                .Include(b => b.Flock)
-                .OrderByDescending(b => b.SaleDate)
-                .ToListAsync();
+              => await _context.BirdSales
+         .Include(b => b.Flock)
+         .OrderByDescending(b => b.CreatedAt)
+         .ToListAsync();
 
         public async Task<decimal> GetTotalRevenueThisMonthAsync()
         {

@@ -20,7 +20,7 @@ namespace FarmTrack.Infrastructure.Data
         public DbSet<Attendance> Attendances { get; set; }
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<BirdSale> BirdSales { get; set; }
-
+        public DbSet<ManureSale> ManureSales { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -57,7 +57,8 @@ namespace FarmTrack.Infrastructure.Data
             builder.Entity<Worker>(entity =>
             {
                 entity.Property(e => e.FullName).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.DailyRate).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.MonthlySalary).HasColumnType("decimal(18,2)");
+                entity.Ignore(e => e.DailyRate);
             });
             builder.Entity<Expense>(entity =>
             {
@@ -73,7 +74,15 @@ namespace FarmTrack.Infrastructure.Data
                 entity.Property(e => e.PricePerBird).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.AmountPaid).HasColumnType("decimal(18,2)");
             });
-           
+            builder.Entity<ManureSale>(entity =>
+            {
+                entity.Ignore(e => e.TotalAmount);
+                entity.Ignore(e => e.Balance);
+                entity.Property(e => e.CustomerName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.PricePerBag).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.AmountPaid).HasColumnType("decimal(18,2)");
+            });
+
         }
     }
 }

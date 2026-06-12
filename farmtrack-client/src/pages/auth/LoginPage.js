@@ -138,13 +138,20 @@ export default function LoginPage() {
                 </motion.button>
               </form>
 
-              <p className="mt-6 text-center text-sm text-slate-500">
-                First time?{' '}
-                <Link to="/register" className="font-semibold text-emerald-700 hover:underline">
+               <div className="mt-6 space-y-3 text-center text-sm text-slate-500">
+                   <div>
+                    <Link to="/forgot-password" className="font-semibold text-slate-500 hover:text-emerald-700 hover:underline">
+                     Forgot your password?
+                    </Link>
+                   </div>
+                 <div>
+                   First time?{' '}
+                 <Link to="/register" className="font-semibold text-emerald-700 hover:underline">
                   Create admin account
-                </Link>
-              </p>
-            </div>
+                    </Link>
+                  </div>
+                 </div>
+               </div>
 
             <p className="mt-6 text-center text-xs text-slate-400">
               🔒 Secure login — your data is private

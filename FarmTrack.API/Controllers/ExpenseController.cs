@@ -22,7 +22,7 @@ namespace FarmTrack.API.Controllers
         public async Task<IActionResult> GetAll()
         {
             var expenses = await _expenseRepo.GetAllAsync();
-            return Ok(expenses.OrderByDescending(e => e.Date));
+            return Ok(expenses.OrderByDescending(e => e.CreatedAt));
         }
 
         [HttpGet("month")]

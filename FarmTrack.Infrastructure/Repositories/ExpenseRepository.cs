@@ -12,7 +12,7 @@ namespace FarmTrack.Infrastructure.Repositories
         public async Task<IEnumerable<Expense>> GetByMonthAsync(int month, int year)
             => await _context.Expenses
                 .Where(e => e.Date.Month == month && e.Date.Year == year)
-                .OrderByDescending(e => e.Date)
+                .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
 
         public async Task<decimal> GetTotalExpensesThisMonthAsync()

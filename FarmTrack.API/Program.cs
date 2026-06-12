@@ -54,6 +54,7 @@ builder.Services.AddScoped<JwtHelper>();
 builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IBirdSaleRepository, BirdSaleRepository>();
 builder.Services.AddScoped<IMortalityRepository, MortalityRepository>();
+builder.Services.AddScoped<IManureSaleRepository, ManureSaleRepository>();
 
 builder.Services.AddCors(options =>
 {
