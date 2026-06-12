@@ -23,7 +23,11 @@ namespace FarmTrack.API.Controllers
         public async Task<IActionResult> GetAll()
         {
             var sales = await _saleRepo.GetAllAsync();
-            var result = sales.Select(s => new SaleResponseDto
+            var result = sales
+              .OrderByDescending(s => s.CreatedAt)
+               .Select(s => new SaleResponseDto
+
+
             {
                 Id = s.Id,
                 CustomerName = s.CustomerName,

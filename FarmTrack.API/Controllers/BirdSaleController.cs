@@ -90,7 +90,6 @@ namespace FarmTrack.API.Controllers
                 RecordedBy = userName
             };
 
-            // Reduce alive birds in flock
             flock.AliveBirds -= dto.NumberOfBirds;
             flock.UpdatedAt = DateTime.UtcNow;
             _flockRepo.Update(flock);

@@ -15,10 +15,10 @@ namespace FarmTrack.Infrastructure.Repositories
         public MortalityRepository(AppDbContext context) : base(context) { }
 
         public async Task<IEnumerable<MortalityRecord>> GetAllWithFlockAsync()
-            => await _context.MortalityRecords
-                .Include(m => m.Flock)
-                .OrderByDescending(m => m.Date)
-                .ToListAsync();
+          => await _context.MortalityRecords
+        .Include(m => m.Flock)
+        .OrderByDescending(m => m.CreatedAt)
+        .ToListAsync();
 
         public async Task<int> GetTotalDeathsThisMonthAsync()
         {

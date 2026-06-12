@@ -25,7 +25,7 @@ namespace FarmTrack.API.Controllers
         public async Task<IActionResult> GetAll()
         {
             var records = await _eggRepo.GetAllAsync();
-            return Ok(records);
+            return Ok(records.OrderByDescending(e => e.CreatedAt));
         }
 
         [HttpGet("today")]

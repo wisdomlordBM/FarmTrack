@@ -4,15 +4,18 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import FlocksPage from './pages/flocks/FlocksPage';
 import EggsPage from './pages/eggs/EggsPage';
 import SalesPage from './pages/sales/SalesPage';
 import WorkersPage from './pages/workers/WorkersPage';
-import Layout from './components/Layout';
 import ExpensesPage from './pages/expenses/ExpensesPage';
 import BirdSalesPage from './pages/birdsales/BirdSalesPage';
+import ManureSalesPage from './pages/manuresales/ManureSalesPage';
 import MortalityPage from './pages/mortality/MortalityPage';
+import Layout from './components/Layout';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -30,8 +33,10 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/dashboard" element={
-          <PrivateRoute><Layout /></PrivateRoute>
+            <PrivateRoute><Layout /></PrivateRoute>
           }>
             <Route index element={<DashboardPage />} />
             <Route path="flocks" element={<FlocksPage />} />
@@ -39,10 +44,10 @@ function App() {
             <Route path="sales" element={<SalesPage />} />
             <Route path="workers" element={<WorkersPage />} />
             <Route path="expenses" element={<ExpensesPage />} />
-            <Route path="mortality" element={<MortalityPage />} />
             <Route path="bird-sales" element={<BirdSalesPage />} />
+            <Route path="manure-sales" element={<ManureSalesPage />} />
+            <Route path="mortality" element={<MortalityPage />} />
           </Route>
-
         </Routes>
       </BrowserRouter>
     </AuthProvider>

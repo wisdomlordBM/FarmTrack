@@ -46,10 +46,8 @@ namespace FarmTrack.API.Controllers
             var totalExpenses = await _expenseRepo.GetTotalExpensesThisMonthAsync();
             var birdSaleRevenue = await _birdSaleRepo.GetTotalRevenueThisMonthAsync();
 
-            // Operating profit = egg sales only minus expenses
             var operatingProfit = eggRevenue - totalExpenses;
 
-            // Total cash = egg sales + bird sales minus expenses
             var totalCash = eggRevenue + birdSaleRevenue - totalExpenses;
 
             var trend = new List<EggTrendDto>();
@@ -67,22 +65,49 @@ namespace FarmTrack.API.Controllers
 
             return Ok(new
             {
-                // Eggs
                 totalEggsToday,
-                // Flock
                 totalActiveBirds = flockList.Sum(f => f.AliveBirds),
                 totalActiveFlocks = flockList.Count,
-                // Money — kept separate
                 eggRevenueThisMonth = eggRevenue,
                 totalExpensesThisMonth = totalExpenses,
                 operatingProfitThisMonth = operatingProfit,
                 birdSaleRevenueThisMonth = birdSaleRevenue,
                 totalCashThisMonth = totalCash,
-                // Other
                 unpaidSalesCount = unpaidSales.Count(),
                 totalWorkers = activeWorkers.Count(),
                 eggTrend = trend
             });
+        }
+        [HttpGet("public-stats")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicStats()
+        {
+            try
+            {
+                var activeFlocks = await _flockRepo.GetActiveFlocks();
+                var flockList = activeFlocks.ToList();
+                var totalEggsToday = await _eggRepo.GetTotalEggsForTodayAsync();
+                var revenueThisMonth = await _saleRepo.GetTotalRevenueThisMonthAsync();
+                var activeWorkers = await _workerRepo.GetActiveWorkersAsync();
+
+                return Ok(new
+                {
+                    totalEggsToday,
+                    totalActiveBirds = flockList.Sum(f => f.AliveBirds),
+                    revenueThisMonth,
+                    totalWorkers = activeWorkers.Count()
+                });
+            }
+            catch
+            {
+                return Ok(new
+                {
+                    totalEggsToday = 0,
+                    totalActiveBirds = 0,
+                    revenueThisMonth = 0,
+                    totalWorkers = 0
+                });
+            }
         }
     }
 }
