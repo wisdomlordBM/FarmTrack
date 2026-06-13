@@ -8,6 +8,7 @@ namespace FarmTrack.Core.Entities
 {
     public class Attendance : BaseEntity
     {
+        public string UserId { get; set; } = string.Empty;
         public int WorkerId { get; set; }
         public Worker Worker { get; set; } = null!;
         public DateTime Date { get; set; }

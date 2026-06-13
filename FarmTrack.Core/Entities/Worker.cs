@@ -17,6 +17,7 @@ namespace FarmTrack.Core.Entities
         public string? Address { get; set; }
         public string? NextOfKin { get; set; }
         public string? NextOfKinPhone { get; set; }
+        public string UserId { get; set; } = string.Empty;
 
         public ICollection<Attendance> Attendances { get; set; } = new List<Attendance>();
     }

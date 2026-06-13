@@ -8,6 +8,7 @@ namespace FarmTrack.Core.Entities
 {
     public class BirdSale : BaseEntity
     {
+
         public int FlockId { get; set; }
         public Flock Flock { get; set; } = null!;
         public DateTime SaleDate { get; set; }
@@ -22,5 +23,6 @@ namespace FarmTrack.Core.Entities
         public string Reason { get; set; } = "Old Layers";
         public string? Notes { get; set; }
         public string RecordedBy { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
     }
 }

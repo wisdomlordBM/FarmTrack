@@ -6,16 +6,38 @@ import {
   BarChart3, ArrowRight, CheckCircle2
 } from 'lucide-react';
 import API from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [liveStats, setLiveStats] = useState(null);
+  const [isPersonal, setIsPersonal] = useState(false);
 
   useEffect(() => {
-    API.get('/dashboard/public-stats')
-      .then(res => setLiveStats(res.data))
-      .catch(() => {});
-  }, []);
+    if (user) {
+      // User is logged in — fetch their personal dashboard
+      API.get('/dashboard/summary')
+        .then(res => {
+          setLiveStats({
+            totalEggsToday: res.data.totalEggsToday,
+            totalActiveBirds: res.data.totalActiveBirds,
+            revenueThisMonth: res.data.eggRevenueThisMonth,
+            totalWorkers: res.data.totalWorkers
+          });
+          setIsPersonal(true);
+        })
+        .catch(() => {});
+    } else {
+      // No user — fetch platform totals
+      API.get('/dashboard/public-stats')
+        .then(res => {
+          setLiveStats(res.data);
+          setIsPersonal(false);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const features = [
     { icon: <Bird size={28} />, title: 'Flock Management', desc: 'Track every batch of birds, monitor survival rates and bird health in real time.', color: 'bg-emerald-50 text-emerald-700' },
@@ -37,7 +59,7 @@ export default function LandingPage() {
   const dashStats = [
     {
       icon: '🥚',
-      label: 'Eggs Today',
+      label: "Eggs Today",
       value: liveStats ? liveStats.totalEggsToday.toLocaleString() : '—',
       color: 'bg-amber-50'
     },
@@ -75,10 +97,26 @@ export default function LandingPage() {
               <div className="text-xs text-slate-500">Poultry management made simple</div>
             </div>
           </div>
-          <button onClick={() => navigate('/login')}
-            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-700">
-            Sign In
-          </button>
+          <div className="flex items-center gap-3">
+            {user ? (
+              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
+                onClick={() => navigate('/dashboard')}
+                className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-700">
+                Go to Dashboard →
+              </motion.button>
+            ) : (
+              <>
+                <button onClick={() => navigate('/login')}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
+                  Sign In
+                </button>
+                <button onClick={() => navigate('/register')}
+                  className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-700">
+                  Get Started
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -87,9 +125,17 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-2">
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }} className="max-w-2xl">
-            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm">
-              🚀 Built for Nigerian poultry farmers
-            </span>
+
+            {user ? (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm">
+                👋 Welcome back, {user.fullName?.split(' ')[0]}!
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm">
+                🚀 Built for Nigerian poultry farmers
+              </span>
+            )}
+
             <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
               Manage your farm
               <span className="block text-emerald-600">like a pro</span>
@@ -98,17 +144,28 @@ export default function LandingPage() {
               FarmTrack helps you track eggs, manage flocks, record sales and handle workers — all from your phone or computer.
             </p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
-                onClick={() => navigate('/register')}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-7 py-4 text-base font-bold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-700">
-                Get Started Free <ArrowRight size={20} />
-              </motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
-                onClick={() => navigate('/login')}
-                className="rounded-2xl border border-emerald-200 bg-white px-7 py-4 text-base font-bold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50">
-                Sign In
-              </motion.button>
+              {user ? (
+                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/dashboard')}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-7 py-4 text-base font-bold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-700">
+                  Open Dashboard <ArrowRight size={20} />
+                </motion.button>
+              ) : (
+                <>
+                  <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate('/register')}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-7 py-4 text-base font-bold text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-700">
+                    Get Started Free <ArrowRight size={20} />
+                  </motion.button>
+                  <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate('/login')}
+                    className="rounded-2xl border border-emerald-200 bg-white px-7 py-4 text-base font-bold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-50">
+                    Sign In
+                  </motion.button>
+                </>
+              )}
             </div>
+
             <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
               {benefits.slice(0, 4).map((item, i) => (
                 <div key={i} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -119,7 +176,7 @@ export default function LandingPage() {
             </div>
           </motion.div>
 
-          {/* Live Dashboard Preview */}
+          {/* Dashboard Preview */}
           <motion.div initial={{ opacity: 0, y: 36 }} animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.15 }}
             className="rounded-[2rem] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-200/60">
@@ -129,12 +186,14 @@ export default function LandingPage() {
                   <div className="h-3 w-3 rounded-full bg-red-400" />
                   <div className="h-3 w-3 rounded-full bg-amber-400" />
                   <div className="h-3 w-3 rounded-full bg-emerald-300" />
-                  <span className="ml-2 text-sm font-medium text-white">FarmTrack — Live Data</span>
+                  <span className="ml-2 text-sm font-medium text-white">
+                    {isPersonal ? `${user?.fullName?.split(' ')[0]}'s Farm — Live` : 'FarmTrack — Live Data'}
+                  </span>
                 </div>
                 {liveStats && (
                   <span className="flex items-center gap-1.5 text-xs text-emerald-200 font-medium">
                     <span className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-                    Live
+                    {isPersonal ? 'Your Farm' : 'Live'}
                   </span>
                 )}
               </div>
@@ -154,7 +213,10 @@ export default function LandingPage() {
                 </div>
                 {liveStats && (
                   <p className="text-center text-xs text-slate-400 mt-3">
-                    ✅ Real data from the farm — updated live
+                    {isPersonal
+                      ? `✅ Your real farm data — updated live`
+                      : '✅ Real data from the platform — updated live'
+                    }
                   </p>
                 )}
               </div>
@@ -211,11 +273,20 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('/register')}
-            className="mt-12 rounded-2xl bg-white px-8 py-4 text-base font-bold text-emerald-700 shadow-xl transition hover:bg-emerald-50">
-            Start Managing Your Farm →
-          </motion.button>
+          {!user && (
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/register')}
+              className="mt-12 rounded-2xl bg-white px-8 py-4 text-base font-bold text-emerald-700 shadow-xl transition hover:bg-emerald-50">
+              Start Managing Your Farm →
+            </motion.button>
+          )}
+          {user && (
+            <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}
+              onClick={() => navigate('/dashboard')}
+              className="mt-12 rounded-2xl bg-white px-8 py-4 text-base font-bold text-emerald-700 shadow-xl transition hover:bg-emerald-50">
+              Go to Your Dashboard →
+            </motion.button>
+          )}
         </div>
       </section>
 

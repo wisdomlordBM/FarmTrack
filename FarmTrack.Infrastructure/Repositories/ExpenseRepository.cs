@@ -9,24 +9,29 @@ namespace FarmTrack.Infrastructure.Repositories
     {
         public ExpenseRepository(AppDbContext context) : base(context) { }
 
-        public async Task<IEnumerable<Expense>> GetByMonthAsync(int month, int year)
+        public async Task<IEnumerable<Expense>> GetByMonthAsync(int month, int year, string userId)
             => await _context.Expenses
-                .Where(e => e.Date.Month == month && e.Date.Year == year)
+                .Where(e => e.Date.Month == month
+                         && e.Date.Year == year
+                         && e.UserId == userId)
                 .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
 
-        public async Task<decimal> GetTotalExpensesThisMonthAsync()
+        public async Task<decimal> GetTotalExpensesThisMonthAsync(string userId)
         {
             var now = DateTime.UtcNow;
             return await _context.Expenses
-                .Where(e => e.Date.Month == now.Month && e.Date.Year == now.Year)
+                .Where(e => e.Date.Month == now.Month
+                         && e.Date.Year == now.Year
+                         && e.UserId == userId)
                 .SumAsync(e => e.Amount);
         }
 
-        public async Task<IEnumerable<Expense>> GetByDateRangeAsync(DateTime from, DateTime to)
+        public async Task<IEnumerable<Expense>> GetByDateRangeAsync(
+            DateTime from, DateTime to, string userId)
             => await _context.Expenses
-                .Where(e => e.Date >= from && e.Date <= to)
-                .OrderByDescending(e => e.Date)
+                .Where(e => e.Date >= from && e.Date <= to && e.UserId == userId)
+                .OrderByDescending(e => e.CreatedAt)
                 .ToListAsync();
     }
 }

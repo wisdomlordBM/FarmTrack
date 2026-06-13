@@ -13,5 +13,6 @@ namespace FarmTrack.Core.Entities
         public int NumberDied { get; set; }
         public string Cause { get; set; } = string.Empty;
         public string RecordedBy { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
     }
 }

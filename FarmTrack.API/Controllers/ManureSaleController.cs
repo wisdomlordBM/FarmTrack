@@ -1,4 +1,5 @@
-﻿using FarmTrack.Core.Entities;
+﻿using FarmTrack.API.Helpers;
+using FarmTrack.Core.Entities;
 using FarmTrack.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,50 +13,44 @@ namespace FarmTrack.API.Controllers
     public class ManureSaleController : ControllerBase
     {
         private readonly IManureSaleRepository _manureRepo;
-
-        public ManureSaleController(IManureSaleRepository manureRepo)
-        {
-            _manureRepo = manureRepo;
-        }
+        public ManureSaleController(IManureSaleRepository manureRepo) => _manureRepo = manureRepo;
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var sales = await _manureRepo.GetAllAsync();
-            var result = sales
-                .OrderByDescending(s => s.CreatedAt)
-                .Select(s => new
-                {
-                    id = s.Id,
-                    saleDate = s.SaleDate,
-                    customerName = s.CustomerName,
-                    customerPhone = s.CustomerPhone,
-                    numberOfBags = s.NumberOfBags,
-                    pricePerBag = s.PricePerBag,
-                    totalAmount = s.NumberOfBags * s.PricePerBag,
-                    amountPaid = s.AmountPaid,
-                    balance = (s.NumberOfBags * s.PricePerBag) - s.AmountPaid,
-                    paymentStatus = s.PaymentStatus,
-                    notes = s.Notes,
-                    recordedBy = s.RecordedBy,
-                    createdAt = s.CreatedAt
-                });
-            return Ok(result);
+            var userId = UserHelper.GetUserId(User);
+            var sales = await _manureRepo.FindAsync(s => s.UserId == userId);
+            return Ok(sales.OrderByDescending(s => s.CreatedAt).Select(s => new {
+                id = s.Id,
+                saleDate = s.SaleDate,
+                customerName = s.CustomerName,
+                customerPhone = s.CustomerPhone,
+                numberOfBags = s.NumberOfBags,
+                pricePerBag = s.PricePerBag,
+                totalAmount = s.NumberOfBags * s.PricePerBag,
+                amountPaid = s.AmountPaid,
+                balance = (s.NumberOfBags * s.PricePerBag) - s.AmountPaid,
+                paymentStatus = s.PaymentStatus,
+                notes = s.Notes,
+                recordedBy = s.RecordedBy,
+                createdAt = s.CreatedAt
+            }));
         }
 
         [HttpGet("revenue/month")]
         public async Task<IActionResult> GetMonthlyRevenue()
         {
-            var revenue = await _manureRepo.GetTotalRevenueThisMonthAsync();
+            var userId = UserHelper.GetUserId(User);
+            var revenue = await _manureRepo.GetTotalRevenueThisMonthAsync(userId);
             return Ok(new { revenueThisMonth = revenue });
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateManureSaleRequest dto)
         {
+            var userId = UserHelper.GetUserId(User);
             var userName = User.FindFirstValue(ClaimTypes.Name) ?? "Admin";
             var total = dto.NumberOfBags * dto.PricePerBag;
-
             var sale = new ManureSale
             {
                 SaleDate = dto.SaleDate,
@@ -67,48 +62,39 @@ namespace FarmTrack.API.Controllers
                 Notes = dto.Notes,
                 PaymentStatus = dto.AmountPaid >= total ? "Paid"
                     : dto.AmountPaid > 0 ? "Partial" : "Pending",
-                RecordedBy = userName
+                RecordedBy = userName,
+                UserId = userId
             };
-
             await _manureRepo.AddAsync(sale);
             await _manureRepo.SaveChangesAsync();
-
             return Ok(new { message = "Manure sale recorded", sale.Id });
         }
 
         [HttpPut("{id}/pay")]
         public async Task<IActionResult> MarkPaid(int id, [FromBody] decimal amount)
         {
+            var userId = UserHelper.GetUserId(User);
             var sale = await _manureRepo.GetByIdAsync(id);
-            if (sale == null)
+            if (sale == null || sale.UserId != userId)
                 return NotFound(new { message = "Sale not found" });
-
             sale.AmountPaid += amount;
             var total = sale.NumberOfBags * sale.PricePerBag;
-            sale.PaymentStatus = sale.AmountPaid >= total ? "Paid"
-                : sale.AmountPaid > 0 ? "Partial" : "Pending";
+            sale.PaymentStatus = sale.AmountPaid >= total ? "Paid" : "Partial";
             sale.UpdatedAt = DateTime.UtcNow;
-
             _manureRepo.Update(sale);
             await _manureRepo.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Payment updated",
-                balance = total - sale.AmountPaid
-            });
+            return Ok(new { message = "Payment updated" });
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            var userId = UserHelper.GetUserId(User);
             var sale = await _manureRepo.GetByIdAsync(id);
-            if (sale == null)
+            if (sale == null || sale.UserId != userId)
                 return NotFound(new { message = "Sale not found" });
-
             _manureRepo.Delete(sale);
             await _manureRepo.SaveChangesAsync();
-
             return Ok(new { message = "Deleted" });
         }
     }

@@ -15,7 +15,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await API.post('/auth/setup', { ...form, role: 'Admin' });
+      await API.post('/auth/register', form);
       toast.success('Account created! Please sign in 🎉');
       navigate('/login');
     } catch (err) {
@@ -69,8 +69,8 @@ export default function RegisterPage() {
                 <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-3xl">
                   🐔
                 </div>
-                <h1 className="text-2xl font-black tracking-tight text-slate-900">Create Admin Account</h1>
-                <p className="mt-1 text-slate-500">Set up your farm management account</p>
+                <h1 className="text-2xl font-black tracking-tight text-slate-900">Create Your Account</h1>
+                <p className="mt-1 text-slate-500">Start managing your farm for free</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">

@@ -19,5 +19,6 @@ namespace FarmTrack.Core.Entities
         public string PaymentStatus { get; set; } = "Pending";
         public string? Notes { get; set; }
         public string RecordedBy { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
     }
 }

@@ -1,4 +1,4 @@
-﻿using FarmTrack.API.DTOs.Sales;
+﻿using FarmTrack.API.Helpers;
 using FarmTrack.Core.Entities;
 using FarmTrack.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -13,56 +13,50 @@ namespace FarmTrack.API.Controllers
     public class SaleController : ControllerBase
     {
         private readonly ISaleRepository _saleRepo;
-
-        public SaleController(ISaleRepository saleRepo)
-        {
-            _saleRepo = saleRepo;
-        }
+        public SaleController(ISaleRepository saleRepo) => _saleRepo = saleRepo;
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var sales = await _saleRepo.GetAllAsync();
-            var result = sales
-              .OrderByDescending(s => s.CreatedAt)
-               .Select(s => new SaleResponseDto
-
-
-            {
-                Id = s.Id,
-                CustomerName = s.CustomerName,
-                CustomerPhone = s.CustomerPhone,
-                CratesSold = s.CratesSold,
-                PricePerCrate = s.PricePerCrate,
-                TotalAmount = s.CratesSold * s.PricePerCrate,
-                AmountPaid = s.AmountPaid,
-                Balance = (s.CratesSold * s.PricePerCrate) - s.AmountPaid,
-                PaymentStatus = s.PaymentStatus,
-                SaleDate = s.SaleDate,
-                RecordedBy = s.RecordedBy
-            });
-            return Ok(result);
+            var userId = UserHelper.GetUserId(User);
+            var sales = await _saleRepo.FindAsync(s => s.UserId == userId);
+            return Ok(sales.OrderByDescending(s => s.CreatedAt).Select(s => new {
+                id = s.Id,
+                customerName = s.CustomerName,
+                customerPhone = s.CustomerPhone,
+                cratesSold = s.CratesSold,
+                pricePerCrate = s.PricePerCrate,
+                totalAmount = s.CratesSold * s.PricePerCrate,
+                amountPaid = s.AmountPaid,
+                balance = (s.CratesSold * s.PricePerCrate) - s.AmountPaid,
+                paymentStatus = s.PaymentStatus,
+                saleDate = s.SaleDate,
+                recordedBy = s.RecordedBy,
+                createdAt = s.CreatedAt
+            }));
         }
 
         [HttpGet("unpaid")]
         public async Task<IActionResult> GetUnpaid()
         {
-            var sales = await _saleRepo.GetUnpaidSalesAsync();
+            var userId = UserHelper.GetUserId(User);
+            var sales = await _saleRepo.GetUnpaidSalesAsync(userId);
             return Ok(sales);
         }
 
         [HttpGet("revenue/month")]
         public async Task<IActionResult> GetMonthlyRevenue()
         {
-            var revenue = await _saleRepo.GetTotalRevenueThisMonthAsync();
+            var userId = UserHelper.GetUserId(User);
+            var revenue = await _saleRepo.GetTotalRevenueThisMonthAsync(userId);
             return Ok(new { revenueThisMonth = revenue });
         }
 
         [HttpPost]
-        public async Task<IActionResult> Create(CreateSaleDto dto)
+        public async Task<IActionResult> Create([FromBody] CreateSaleRequest dto)
         {
+            var userId = UserHelper.GetUserId(User);
             var userName = User.FindFirstValue(ClaimTypes.Name) ?? "Unknown";
-
             var sale = new Sale
             {
                 CustomerName = dto.CustomerName,
@@ -71,31 +65,40 @@ namespace FarmTrack.API.Controllers
                 PricePerCrate = dto.PricePerCrate,
                 AmountPaid = dto.AmountPaid,
                 SaleDate = dto.SaleDate,
-                PaymentStatus = dto.AmountPaid >= dto.CratesSold * dto.PricePerCrate ? "Paid" : "Pending",
-                RecordedBy = userName
+                PaymentStatus = dto.AmountPaid >= dto.CratesSold * dto.PricePerCrate
+                    ? "Paid" : dto.AmountPaid > 0 ? "Partial" : "Pending",
+                RecordedBy = userName,
+                UserId = userId
             };
-
             await _saleRepo.AddAsync(sale);
             await _saleRepo.SaveChangesAsync();
-
             return Ok(new { message = "Sale recorded", sale.Id });
         }
 
         [HttpPut("{id}/pay")]
         public async Task<IActionResult> MarkAsPaid(int id, [FromBody] decimal amount)
         {
+            var userId = UserHelper.GetUserId(User);
             var sale = await _saleRepo.GetByIdAsync(id);
-            if (sale == null) return NotFound(new { message = "Sale not found" });
-
+            if (sale == null || sale.UserId != userId)
+                return NotFound(new { message = "Sale not found" });
             sale.AmountPaid += amount;
             sale.PaymentStatus = sale.AmountPaid >= sale.CratesSold * sale.PricePerCrate
                 ? "Paid" : "Partial";
             sale.UpdatedAt = DateTime.UtcNow;
-
             _saleRepo.Update(sale);
             await _saleRepo.SaveChangesAsync();
-
-            return Ok(new { message = "Payment updated", balance = (sale.CratesSold * sale.PricePerCrate) - sale.AmountPaid });
+            return Ok(new { message = "Payment updated" });
         }
+    }
+
+    public class CreateSaleRequest
+    {
+        public string CustomerName { get; set; } = string.Empty;
+        public string? CustomerPhone { get; set; }
+        public int CratesSold { get; set; }
+        public decimal PricePerCrate { get; set; }
+        public decimal AmountPaid { get; set; }
+        public DateTime SaleDate { get; set; }
     }
 }

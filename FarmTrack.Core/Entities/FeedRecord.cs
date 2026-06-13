@@ -15,5 +15,6 @@ namespace FarmTrack.Core.Entities
         public decimal CostPerKg { get; set; }
         public decimal TotalCost => QuantityKg * CostPerKg;
         public string Type { get; set; } = "Consumption";
+        public string UserId { get; set; } = string.Empty;
     }
 }

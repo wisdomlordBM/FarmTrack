@@ -3,6 +3,7 @@ using FarmTrack.Core.Entities;
 using FarmTrack.Core.Interfaces;
 using FarmTrack.Infrastructure.Data;
 using FarmTrack.Infrastructure.Repositories;
+using FarmTrack.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -55,6 +56,7 @@ builder.Services.AddScoped<IExpenseRepository, ExpenseRepository>();
 builder.Services.AddScoped<IBirdSaleRepository, BirdSaleRepository>();
 builder.Services.AddScoped<IMortalityRepository, MortalityRepository>();
 builder.Services.AddScoped<IManureSaleRepository, ManureSaleRepository>();
+builder.Services.AddScoped<EmailService>();
 
 builder.Services.AddCors(options =>
 {

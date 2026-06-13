@@ -1,4 +1,5 @@
-﻿using FarmTrack.Core.Entities;
+﻿using FarmTrack.API.Helpers;
+using FarmTrack.Core.Entities;
 using FarmTrack.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,39 +12,33 @@ namespace FarmTrack.API.Controllers
     public class WorkerController : ControllerBase
     {
         private readonly IWorkerRepository _workerRepo;
-
-        public WorkerController(IWorkerRepository workerRepo)
-        {
-            _workerRepo = workerRepo;
-        }
+        public WorkerController(IWorkerRepository workerRepo) => _workerRepo = workerRepo;
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var workers = await _workerRepo.GetActiveWorkersAsync();
-            var result = workers
-                .OrderByDescending(w => w.CreatedAt)
-                .Select(w => new
-                {
-                    id = w.Id,
-                    fullName = w.FullName,
-                    phone = w.Phone,
-                    role = w.Role,
-                    monthlySalary = w.MonthlySalary,
-                    dailyRate = w.DailyRate,
-                    isActive = w.IsActive,
-                    dateJoined = w.DateJoined,
-                    address = w.Address,
-                    nextOfKin = w.NextOfKin,
-                    nextOfKinPhone = w.NextOfKinPhone,
-                    createdAt = w.CreatedAt
-                });
-            return Ok(result);
+            var userId = UserHelper.GetUserId(User);
+            var workers = await _workerRepo.GetActiveWorkersAsync(userId);
+            return Ok(workers.Select(w => new {
+                id = w.Id,
+                fullName = w.FullName,
+                phone = w.Phone,
+                role = w.Role,
+                monthlySalary = w.MonthlySalary,
+                dailyRate = w.DailyRate,
+                isActive = w.IsActive,
+                dateJoined = w.DateJoined,
+                address = w.Address,
+                nextOfKin = w.NextOfKin,
+                nextOfKinPhone = w.NextOfKinPhone,
+                createdAt = w.CreatedAt
+            }));
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateWorkerRequest dto)
         {
+            var userId = UserHelper.GetUserId(User);
             var worker = new Worker
             {
                 FullName = dto.FullName,
@@ -54,29 +49,21 @@ namespace FarmTrack.API.Controllers
                 Address = dto.Address,
                 NextOfKin = dto.NextOfKin,
                 NextOfKinPhone = dto.NextOfKinPhone,
-                IsActive = true
+                IsActive = true,
+                UserId = userId
             };
-
             await _workerRepo.AddAsync(worker);
             await _workerRepo.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Worker added",
-                worker.Id,
-                dailyRate = worker.DailyRate
-            });
+            return Ok(new { message = "Worker added", worker.Id, dailyRate = worker.DailyRate });
         }
 
         [HttpGet("attendance")]
         public async Task<IActionResult> GetAttendance([FromQuery] DateTime? date)
         {
+            var userId = UserHelper.GetUserId(User);
             var targetDate = date?.Date ?? DateTime.UtcNow.Date;
-            var workers = await _workerRepo.GetActiveWorkersAsync();
-            var workerList = workers.ToList();
-
-            var result = workerList.Select(w => new
-            {
+            var workers = await _workerRepo.GetActiveWorkersAsync(userId);
+            var result = workers.Select(w => new {
                 workerId = w.Id,
                 workerName = w.FullName,
                 role = w.Role,
@@ -84,83 +71,51 @@ namespace FarmTrack.API.Controllers
                 monthlySalary = w.MonthlySalary,
                 attendance = w.Attendances
                     .Where(a => a.Date.Date == targetDate)
-                    .Select(a => new
-                    {
-                        present = a.Present,
-                        notes = a.Notes,
-                        date = a.Date
-                    })
+                    .Select(a => new { present = a.Present, notes = a.Notes, date = a.Date })
                     .FirstOrDefault()
             });
-
-            return Ok(new
-            {
-                date = targetDate,
-                records = result
-            });
+            return Ok(new { date = targetDate, records = result });
         }
 
         [HttpPost("attendance")]
         public async Task<IActionResult> MarkAttendance([FromBody] MarkAttendanceRequest dto)
         {
+            var userId = UserHelper.GetUserId(User);
             var worker = await _workerRepo.GetByIdAsync(dto.WorkerId);
-            if (worker == null)
+            if (worker == null || worker.UserId != userId)
                 return NotFound(new { message = "Worker not found" });
-
-            var attendance = new Attendance
+            worker.Attendances.Add(new Attendance
             {
                 WorkerId = dto.WorkerId,
                 Date = dto.Date,
                 Present = dto.Present,
                 Notes = dto.Notes
-            };
-
-            worker.Attendances.Add(attendance);
+            });
             _workerRepo.Update(worker);
             await _workerRepo.SaveChangesAsync();
-
             return Ok(new { message = "Attendance marked" });
         }
 
         [HttpGet("salary/month")]
-        public async Task<IActionResult> GetMonthlySalarySummary(
-            [FromQuery] int? month, [FromQuery] int? year)
+        public async Task<IActionResult> GetMonthlySalarySummary()
         {
-            var m = month ?? DateTime.UtcNow.Month;
-            var y = year ?? DateTime.UtcNow.Year;
-
-            var workers = await _workerRepo.GetActiveWorkersAsync();
-            var workerList = workers.ToList();
-
-            var totalMonthlySalary = workerList.Sum(w => w.MonthlySalary);
-            var totalDailyRate = workerList.Sum(w => w.DailyRate);
-
-            var byRole = workerList
-                .GroupBy(w => w.Role)
-                .Select(g => new
-                {
-                    role = g.Key,
-                    count = g.Count(),
-                    totalSalary = g.Sum(w => w.MonthlySalary)
-                })
-                .OrderByDescending(x => x.totalSalary)
-                .ToList();
-
+            var userId = UserHelper.GetUserId(User);
+            var workers = await _workerRepo.GetActiveWorkersAsync(userId);
+            var list = workers.ToList();
             return Ok(new
             {
-                month = m,
-                year = y,
-                totalWorkers = workerList.Count,
-                totalMonthlySalary,
-                totalDailyRate,
-                byRole,
-                workers = workerList.Select(w => new
-                {
-                    w.Id,
-                    w.FullName,
-                    w.Role,
-                    w.MonthlySalary,
-                    w.DailyRate
+                totalWorkers = list.Count,
+                totalMonthlySalary = list.Sum(w => w.MonthlySalary),
+                totalDailyRate = list.Sum(w => w.DailyRate),
+                byRole = list.GroupBy(w => w.Role)
+                    .Select(g => new { role = g.Key, count = g.Count(), totalSalary = g.Sum(w => w.MonthlySalary) })
+                    .OrderByDescending(x => x.totalSalary),
+                workers = list.Select(w => new {
+                    id = w.Id,
+                    fullName = w.FullName,
+                    role = w.Role,
+                    monthlySalary = w.MonthlySalary,
+                    dailyRate = w.DailyRate
                 })
             });
         }
@@ -168,15 +123,14 @@ namespace FarmTrack.API.Controllers
         [HttpPut("{id}/deactivate")]
         public async Task<IActionResult> Deactivate(int id)
         {
+            var userId = UserHelper.GetUserId(User);
             var worker = await _workerRepo.GetByIdAsync(id);
-            if (worker == null)
+            if (worker == null || worker.UserId != userId)
                 return NotFound(new { message = "Worker not found" });
-
             worker.IsActive = false;
             worker.UpdatedAt = DateTime.UtcNow;
             _workerRepo.Update(worker);
             await _workerRepo.SaveChangesAsync();
-
             return Ok(new { message = "Worker removed" });
         }
     }
