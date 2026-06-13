@@ -8,5 +8,6 @@
         public DateTime Date { get; set; }
         public string? Description { get; set; }
         public string RecordedBy { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
     }
 }

@@ -8,6 +8,7 @@ namespace FarmTrack.Core.Entities
 {
     public abstract class BaseEntity
     {
+        public string UserId { get; set; } = string.Empty;
         public int Id { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }

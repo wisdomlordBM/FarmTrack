@@ -18,5 +18,6 @@ namespace FarmTrack.Core.Entities
         public decimal Balance => TotalAmount - AmountPaid;
         public string PaymentStatus { get; set; } = "Pending";
         public string RecordedBy { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
     }
 }

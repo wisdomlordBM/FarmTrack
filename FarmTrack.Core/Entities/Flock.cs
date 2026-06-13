@@ -13,6 +13,7 @@ namespace FarmTrack.Core.Entities
         public int AliveBirds { get; set; }
         public DateTime DateAcquired { get; set; }
         public string Status { get; set; } = "Active";
+        public string UserId { get; set; } = string.Empty;
 
         public ICollection<EggRecord> EggRecords { get; set; } = new List<EggRecord>();
         public ICollection<MortalityRecord> MortalityRecords { get; set; } = new List<MortalityRecord>();

@@ -1,6 +1,7 @@
 ﻿using FarmTrack.API.DTOs.Auth;
 using FarmTrack.API.Helpers;
 using FarmTrack.Core.Entities;
+using FarmTrack.Infrastructure.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.Data;
@@ -27,22 +28,26 @@ namespace FarmTrack.API.Controllers
         }
 
         [HttpPost("register")]
-        [Authorize]
-        public async Task<IActionResult> Register(RegisterDto dto)
+        [AllowAnonymous]
+        public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
+            var existingUser = await _userManager.FindByEmailAsync(dto.Email);
+            if (existingUser != null)
+                return BadRequest(new { message = "Email already registered" });
+
             var user = new ApplicationUser
             {
                 FullName = dto.FullName,
                 Email = dto.Email,
                 UserName = dto.Email,
-                Role = dto.Role
+                Role = "Admin"
             };
 
             var result = await _userManager.CreateAsync(user, dto.Password);
             if (!result.Succeeded)
-                return BadRequest(result.Errors);
+                return BadRequest(new { message = result.Errors.First().Description });
 
-            return Ok(new { message = "Registration successful" });
+            return Ok(new { message = "Account created successfully" });
         }
 
         [HttpPost("login")]
@@ -67,33 +72,12 @@ namespace FarmTrack.API.Controllers
                 Expiry = DateTime.UtcNow.AddDays(7)
             });
         }
-        [HttpPost("setup")]
-        [AllowAnonymous]
-        public async Task<IActionResult> Setup(RegisterDto dto)
-        {
-            var anyUser = _userManager.Users.Any();
-            if (anyUser)
-                return BadRequest(new { message = "Setup already completed" });
-
-            dto.Role = "Admin";
-            var user = new ApplicationUser
-            {
-                FullName = dto.FullName,
-                Email = dto.Email,
-                UserName = dto.Email,
-                Role = "Admin"
-            };
-
-            var result = await _userManager.CreateAsync(user, dto.Password);
-            if (!result.Succeeded)
-                return BadRequest(result.Errors);
-
-            return Ok(new { message = "Admin account created successfully" });
-        }
 
         [HttpPost("forgot-password")]
         [AllowAnonymous]
-        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest dto)
+        public async Task<IActionResult> ForgotPassword(
+            [FromBody] ForgotPasswordRequest dto,
+            [FromServices] EmailService emailService)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
             if (user == null)
@@ -103,10 +87,9 @@ namespace FarmTrack.API.Controllers
             var encodedToken = Uri.EscapeDataString(token);
             var resetLink = $"http://localhost:3000/reset-password?token={encodedToken}&email={dto.Email}";
 
-            // Log to console for now — replace with email service when hosting
-            Console.WriteLine($"Password reset link for {dto.Email}: {resetLink}");
+            await emailService.SendPasswordResetEmailAsync(dto.Email, resetLink);
 
-            return Ok(new { message = "Reset link generated", resetLink });
+            return Ok(new { message = "Reset link sent to your email" });
         }
 
         [HttpPost("reset-password")]

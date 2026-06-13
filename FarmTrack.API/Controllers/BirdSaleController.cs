@@ -1,4 +1,6 @@
-﻿using FarmTrack.Core.Entities;
+﻿
+using FarmTrack.API.Helpers;
+using FarmTrack.Core.Entities;
 using FarmTrack.Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,21 +15,15 @@ namespace FarmTrack.API.Controllers
     {
         private readonly IBirdSaleRepository _birdSaleRepo;
         private readonly IFlockRepository _flockRepo;
-
-        public BirdSaleController(
-            IBirdSaleRepository birdSaleRepo,
-            IFlockRepository flockRepo)
-        {
-            _birdSaleRepo = birdSaleRepo;
-            _flockRepo = flockRepo;
-        }
+        public BirdSaleController(IBirdSaleRepository birdSaleRepo, IFlockRepository flockRepo)
+        { _birdSaleRepo = birdSaleRepo; _flockRepo = flockRepo; }
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
         {
-            var sales = await _birdSaleRepo.GetAllWithFlockAsync();
-            var result = sales.Select(b => new
-            {
+            var userId = UserHelper.GetUserId(User);
+            var sales = await _birdSaleRepo.GetAllWithFlockAsync(userId);
+            return Ok(sales.Select(b => new {
                 id = b.Id,
                 flockId = b.FlockId,
                 flockName = b.Flock?.BatchName ?? "",
@@ -44,36 +40,28 @@ namespace FarmTrack.API.Controllers
                 notes = b.Notes,
                 recordedBy = b.RecordedBy,
                 createdAt = b.CreatedAt
-            });
-            return Ok(result);
-        }
-
-        [HttpGet("unpaid")]
-        public async Task<IActionResult> GetUnpaid()
-        {
-            var sales = await _birdSaleRepo.GetUnpaidAsync();
-            return Ok(sales);
+            }));
         }
 
         [HttpGet("revenue/month")]
         public async Task<IActionResult> GetMonthlyRevenue()
         {
-            var revenue = await _birdSaleRepo.GetTotalRevenueThisMonthAsync();
+            var userId = UserHelper.GetUserId(User);
+            var revenue = await _birdSaleRepo.GetTotalRevenueThisMonthAsync(userId);
             return Ok(new { revenueThisMonth = revenue });
         }
 
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateBirdSaleRequest dto)
         {
+            var userId = UserHelper.GetUserId(User);
             var flock = await _flockRepo.GetByIdAsync(dto.FlockId);
-            if (flock == null)
+            if (flock == null || flock.UserId != userId)
                 return NotFound(new { message = "Flock not found" });
-
             if (dto.NumberOfBirds > flock.AliveBirds)
-                return BadRequest(new { message = $"Only {flock.AliveBirds} birds available in this flock" });
+                return BadRequest(new { message = $"Only {flock.AliveBirds} birds available" });
 
             var userName = User.FindFirstValue(ClaimTypes.Name) ?? "Admin";
-
             var sale = new BirdSale
             {
                 FlockId = dto.FlockId,
@@ -87,40 +75,31 @@ namespace FarmTrack.API.Controllers
                 Notes = dto.Notes,
                 PaymentStatus = dto.AmountPaid >= dto.NumberOfBirds * dto.PricePerBird
                     ? "Paid" : dto.AmountPaid > 0 ? "Partial" : "Pending",
-                RecordedBy = userName
+                RecordedBy = userName,
+                UserId = userId
             };
-
             flock.AliveBirds -= dto.NumberOfBirds;
             flock.UpdatedAt = DateTime.UtcNow;
             _flockRepo.Update(flock);
-
             await _birdSaleRepo.AddAsync(sale);
             await _birdSaleRepo.SaveChangesAsync();
-
             return Ok(new { message = "Bird sale recorded", sale.Id });
         }
 
         [HttpPut("{id}/pay")]
         public async Task<IActionResult> MarkPaid(int id, [FromBody] decimal amount)
         {
+            var userId = UserHelper.GetUserId(User);
             var sale = await _birdSaleRepo.GetByIdAsync(id);
-            if (sale == null)
+            if (sale == null || sale.UserId != userId)
                 return NotFound(new { message = "Sale not found" });
-
             sale.AmountPaid += amount;
             var total = sale.NumberOfBirds * sale.PricePerBird;
-            sale.PaymentStatus = sale.AmountPaid >= total ? "Paid"
-                : sale.AmountPaid > 0 ? "Partial" : "Pending";
+            sale.PaymentStatus = sale.AmountPaid >= total ? "Paid" : "Partial";
             sale.UpdatedAt = DateTime.UtcNow;
-
             _birdSaleRepo.Update(sale);
             await _birdSaleRepo.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = "Payment updated",
-                balance = total - sale.AmountPaid
-            });
+            return Ok(new { message = "Payment updated" });
         }
     }
 
