@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Bird, Egg, ShoppingCart,
   Users, LogOut, Menu, X, ChevronRight,
-  Home, Wallet, Drumstick, Skull, PackageOpen
+  Home, Wallet, Drumstick, Skull, PackageOpen, Building2
 } from 'lucide-react';
 
 const navItems = [
@@ -18,6 +18,7 @@ const navItems = [
   { to: '/dashboard/bird-sales', icon: <Drumstick size={20} />, label: 'Bird Sales' },
   { to: '/dashboard/manure-sales', icon: <PackageOpen size={20} />, label: 'Manure Sales' },
   { to: '/dashboard/mortality', icon: <Skull size={20} />, label: 'Mortality' },
+  { to: '/dashboard/settings', icon: <Building2 size={20} />, label: 'Farm Profile' },
 ];
 
 export default function Layout() {

@@ -21,6 +21,8 @@ namespace FarmTrack.Infrastructure.Data
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<BirdSale> BirdSales { get; set; }
         public DbSet<ManureSale> ManureSales { get; set; }
+        public DbSet<FarmProfile> FarmProfiles { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -82,7 +84,23 @@ namespace FarmTrack.Infrastructure.Data
                 entity.Property(e => e.PricePerBag).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.AmountPaid).HasColumnType("decimal(18,2)");
             });
+            builder.Entity<FarmProfile>(entity =>
+            {
+                entity.Property(e => e.FarmName)
+                    .IsRequired()
+                    .HasMaxLength(150);
 
+                entity.Property(e => e.Phone)
+                    .HasMaxLength(20);
+
+                entity.Property(e => e.Email)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.Address)
+                    .HasMaxLength(250);
+
+               
+            });
         }
     }
 }

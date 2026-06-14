@@ -52,6 +52,7 @@ export default function DashboardPage() {
   const expenses = summary?.totalExpensesThisMonth ?? 0;
   const operatingProfit = summary?.operatingProfitThisMonth ?? 0;
   const birdSaleRevenue = summary?.birdSaleRevenueThisMonth ?? 0;
+  const manureRevenue = summary?.manureSaleRevenueThisMonth ?? 0;
   const totalCash = summary?.totalCashThisMonth ?? 0;
 
   const stats = [
@@ -66,6 +67,8 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-5 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
+
+        {/* Greeting */}
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -84,27 +87,27 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+        {/* ── MONEY SECTION ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+
+          {/* Egg Operating Profit */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0 }}
-            className={`rounded-3xl p-5 shadow-sm ${
+            className={`rounded-3xl p-5 lg:col-span-2 ${
               operatingProfit >= 0
                 ? 'bg-gradient-to-br from-emerald-600 to-emerald-700'
                 : 'bg-gradient-to-br from-rose-600 to-red-700'
-            }`}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-semibold text-white/80">🥚 Egg Operating Profit</span>
+            }`}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-white/80 text-sm font-semibold">🥚 Egg Operating Profit</span>
               {operatingProfit >= 0
                 ? <TrendingUp size={20} className="text-white/70" />
                 : <TrendingDown size={20} className="text-white/70" />}
             </div>
-            <div className="text-3xl font-black tracking-tight text-white">
+            <div className="text-3xl font-black text-white">
               {operatingProfit >= 0 ? '+' : ''}₦{operatingProfit.toLocaleString()}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-4">
+            <div className="mt-3 pt-3 border-t border-white/20 grid grid-cols-2 gap-2">
               <div>
                 <div className="text-xs text-white/60">Egg Revenue</div>
                 <div className="text-sm font-bold text-white">₦{eggRevenue.toLocaleString()}</div>
@@ -114,62 +117,62 @@ export default function DashboardPage() {
                 <div className="text-sm font-bold text-white">₦{expenses.toLocaleString()}</div>
               </div>
             </div>
+            <div className="mt-2 text-white/60 text-xs">Egg Sales minus Farm Expenses</div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08 }}
-            className="rounded-3xl bg-gradient-to-br from-amber-500 to-orange-500 p-5 shadow-sm"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-semibold text-white/80">🐔 Bird Sales Income</span>
-              <span className="rounded-lg bg-white/20 px-2 py-1 text-xs font-semibold text-white">One-time</span>
+          {/* Bird Sales */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="rounded-3xl p-5 bg-gradient-to-br from-orange-500 to-amber-500">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-white/80 text-sm font-semibold">🐔 Bird Sales</span>
+              <span className="text-white/70 text-xs font-semibold bg-white/20 px-2 py-1 rounded-lg">One-time</span>
             </div>
-            <div className="text-3xl font-black tracking-tight text-white">
-              ₦{birdSaleRevenue.toLocaleString()}
-            </div>
-            <div className="mt-4 border-t border-white/15 pt-4 text-xs leading-6 text-white/70">
-              From selling old layers & retired birds
-              <br />
-              Kept separate from daily operations
-            </div>
+            <div className="text-2xl font-black text-white">₦{birdSaleRevenue.toLocaleString()}</div>
+            <div className="mt-2 text-white/60 text-xs">From selling old layers</div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.16 }}
-            className={`rounded-3xl p-5 shadow-sm ${
+          {/* Manure Sales */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="rounded-3xl p-5 bg-gradient-to-br from-lime-600 to-green-700">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-white/80 text-sm font-semibold">🌿 Manure Sales</span>
+              <span className="text-white/70 text-xs font-semibold bg-white/20 px-2 py-1 rounded-lg">One-time</span>
+            </div>
+            <div className="text-2xl font-black text-white">₦{manureRevenue.toLocaleString()}</div>
+            <div className="mt-2 text-white/60 text-xs">From selling poultry manure</div>
+          </motion.div>
+
+          {/* Total Cash */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className={`rounded-3xl p-5 lg:col-span-4 ${
               totalCash >= 0
-                ? 'bg-gradient-to-br from-sky-600 to-indigo-600'
-                : 'bg-gradient-to-br from-rose-600 to-red-700'
-            }`}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-semibold text-white/80">💵 Total Cash This Month</span>
-              <span className="text-2xl">{totalCash >= 0 ? '📈' : '📉'}</span>
-            </div>
-            <div className="text-3xl font-black tracking-tight text-white">
-              {totalCash >= 0 ? '+' : ''}₦{totalCash.toLocaleString()}
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/15 pt-4">
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600'
+                : 'bg-gradient-to-r from-red-600 to-rose-700'
+            }`}>
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
-                <div className="text-xs text-white/60">All Income</div>
-                <div className="text-sm font-bold text-white">₦{(eggRevenue + birdSaleRevenue).toLocaleString()}</div>
+                <p className="text-white/80 text-sm font-semibold mb-1">💵 Total Cash This Month</p>
+                <p className="text-4xl font-extrabold text-white">
+                  {totalCash >= 0 ? '+' : ''}₦{totalCash.toLocaleString()}
+                </p>
+                <p className="text-white/60 text-xs mt-2">
+                  Egg ₦{eggRevenue.toLocaleString()} + Birds ₦{birdSaleRevenue.toLocaleString()} + Manure ₦{manureRevenue.toLocaleString()} − Expenses ₦{expenses.toLocaleString()}
+                </p>
               </div>
-              <div>
-                <div className="text-xs text-white/60">All Expenses</div>
-                <div className="text-sm font-bold text-white">₦{expenses.toLocaleString()}</div>
-              </div>
+              <div className="text-5xl">{totalCash >= 0 ? '📈' : '📉'}</div>
             </div>
           </motion.div>
         </div>
 
+        {/* Stat Cards */}
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-3">
           {stats.map((s, i) => <StatCard key={i} {...s} />)}
         </div>
 
+        {/* Egg Trend Chart */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -185,7 +188,6 @@ export default function DashboardPage() {
               🥚 Daily
             </div>
           </div>
-
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={summary?.eggTrend ?? []}>
               <defs>
@@ -195,34 +197,11 @@ export default function DashboardPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 12, fill: '#94a3b8' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: '#94a3b8' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  borderRadius: '16px',
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 10px 30px rgba(15,23,42,0.08)'
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="totalEggs"
-                stroke="#10b981"
-                strokeWidth={3}
-                fill="url(#eggGrad)"
-                dot={{ fill: '#10b981', r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Eggs"
-              />
+              <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(15,23,42,0.08)' }} />
+              <Area type="monotone" dataKey="totalEggs" stroke="#10b981" strokeWidth={3}
+                fill="url(#eggGrad)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} name="Eggs" />
             </AreaChart>
           </ResponsiveContainer>
         </motion.div>

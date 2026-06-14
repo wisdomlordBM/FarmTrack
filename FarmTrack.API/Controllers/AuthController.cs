@@ -119,5 +119,26 @@ namespace FarmTrack.API.Controllers
             public string Token { get; set; } = string.Empty;
             public string NewPassword { get; set; } = string.Empty;
         }
+
+        [HttpPut("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest dto)
+        {
+            var userId = UserHelper.GetUserId(User);
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return NotFound();
+
+            var result = await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+            if (!result.Succeeded)
+                return BadRequest(new { message = result.Errors.FirstOrDefault()?.Description ?? "Failed to change password" });
+
+            return Ok(new { message = "Password changed successfully" });
+        }
+
+        public class ChangePasswordRequest
+        {
+            public string CurrentPassword { get; set; } = string.Empty;
+            public string NewPassword { get; set; } = string.Empty;
+        }
     }
 }

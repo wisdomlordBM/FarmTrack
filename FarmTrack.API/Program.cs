@@ -57,6 +57,7 @@ builder.Services.AddScoped<IBirdSaleRepository, BirdSaleRepository>();
 builder.Services.AddScoped<IMortalityRepository, MortalityRepository>();
 builder.Services.AddScoped<IManureSaleRepository, ManureSaleRepository>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<IFarmProfileRepository, FarmProfileRepository>();
 
 builder.Services.AddCors(options =>
 {

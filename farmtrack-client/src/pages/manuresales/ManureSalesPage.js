@@ -1,31 +1,46 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, CreditCard, PackageOpen } from 'lucide-react';
+import { Plus, X, CreditCard, PackageOpen, FileText, Eye } from 'lucide-react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
+import ConfirmModal from '../../components/ConfirmModal';
+import { generateManureSaleReceipt } from '../../utils/generateReceipt';
 
 export default function ManureSalesPage() {
+  const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
+  const [receiptModal, setReceiptModal] = useState({ isOpen: false, sale: null });
+  const [ownerNotes, setOwnerNotes] = useState('');
+  const [generatingId, setGeneratingId] = useState(null);
+  const [receipts, setReceipts] = useState({});
+  const [farmProfile, setFarmProfile] = useState({});
   const ITEMS_PER_PAGE = 7;
   const [form, setForm] = useState({
-    customerName: '', customerPhone: '',
-    numberOfBags: '', pricePerBag: '',
-    amountPaid: '', saleDate: '', notes: ''
+    customerName: '', customerPhone: '', numberOfBags: '',
+    pricePerBag: '', amountPaid: '', saleDate: '', notes: ''
   });
 
   const load = async () => {
     setCurrentPage(1);
     try {
-      const [salesRes, revenueRes] = await Promise.all([
-        API.get('/manuresale'),
-        API.get('/manuresale/revenue/month')
+      const [salesRes, revenueRes, profileRes] = await Promise.all([
+        API.get('/manuresale'), API.get('/manuresale/revenue/month'), API.get('/farmprofile')
       ]);
       setSales(salesRes.data);
       setMonthRevenue(revenueRes.data.revenueThisMonth);
+      setFarmProfile(profileRes.data);
+
+      const stored = {};
+      salesRes.data.forEach(sale => {
+        if (localStorage.getItem(`farmtrack_receipt_manuresale_${sale.id}`)) stored[sale.id] = true;
+      });
+      setReceipts(stored);
     } catch {
       toast.error('Failed to load manure sales');
     } finally {
@@ -60,9 +75,7 @@ export default function ManureSalesPage() {
     const amount = prompt('Enter amount paid (₦):');
     if (!amount || isNaN(amount)) return;
     try {
-      await API.put(`/manuresale/${id}/pay`, parseFloat(amount), {
-        headers: { 'Content-Type': 'application/json' }
-      });
+      await API.put(`/manuresale/${id}/pay`, parseFloat(amount), { headers: { 'Content-Type': 'application/json' } });
       toast.success('Payment updated!');
       load();
     } catch {
@@ -70,14 +83,57 @@ export default function ManureSalesPage() {
     }
   };
 
-  const deleteSale = async (id) => {
-    if (!window.confirm('Delete this record?')) return;
+  const handleConfirmDelete = async () => {
     try {
-      await API.delete(`/manuresale/${id}`);
+      await API.delete(`/manuresale/${confirmModal.id}`);
       toast.success('Deleted');
       load();
     } catch {
-      toast.error('Failed');
+      toast.error('Failed to delete');
+    }
+  };
+
+  const handleReceiptClick = (sale) => {
+    if (!farmProfile.isSetup) {
+      toast.error('Please set up your Farm Profile first');
+      navigate('/dashboard/settings');
+      return;
+    }
+    setOwnerNotes('');
+    setReceiptModal({ isOpen: true, sale });
+  };
+
+  const handleGenerateReceipt = async (sale, notes) => {
+    setGeneratingId(sale.id);
+    try {
+      const doc = await generateManureSaleReceipt(sale, { ...farmProfile, notes });
+      doc.save(`manure-sale-receipt-${sale.id}.pdf`);
+      window.open(doc.output('bloburl'), '_blank');
+      localStorage.setItem(`farmtrack_receipt_manuresale_${sale.id}`, 'true');
+      setReceipts(prev => ({ ...prev, [sale.id]: true }));
+      toast.success('Receipt downloaded! 🧾');
+      setReceiptModal({ isOpen: false, sale: null });
+    } catch {
+      toast.error('Failed to generate receipt');
+    } finally {
+      setGeneratingId(null);
+    }
+  };
+
+  const handleViewReceipt = async (sale) => {
+    if (!farmProfile.isSetup) {
+      toast.error('Please set up your Farm Profile first');
+      navigate('/dashboard/settings');
+      return;
+    }
+    setGeneratingId(sale.id);
+    try {
+      const doc = await generateManureSaleReceipt(sale, farmProfile);
+      window.open(doc.output('bloburl'), '_blank');
+    } catch {
+      toast.error('Failed to open receipt');
+    } finally {
+      setGeneratingId(null);
     }
   };
 
@@ -87,17 +143,14 @@ export default function ManureSalesPage() {
     </div>
   );
 
-  
   const totalBags = sales.reduce((s, r) => s + r.numberOfBags, 0);
   const totalRevenue = sales.reduce((s, r) => s + totalAmt(r), 0);
   const unpaid = sales.filter(s => s.paymentStatus !== 'Paid');
   const liveTotal = parseInt(form.numberOfBags || 0) * parseFloat(form.pricePerBag || 0);
   const liveBalance = liveTotal - parseFloat(form.amountPaid || 0);
-    const totalPages = Math.ceil(sales.length / ITEMS_PER_PAGE);
-    const paginatedSales = sales.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-     currentPage * ITEMS_PER_PAGE
-    );
+  const totalPages = Math.ceil(sales.length / ITEMS_PER_PAGE);
+  const paginatedSales = sales.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   return (
     <div>
       <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
@@ -112,7 +165,6 @@ export default function ManureSalesPage() {
         </motion.button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { icon: '🌿', label: 'Revenue This Month', value: `₦${monthRevenue.toLocaleString()}`, color: 'bg-emerald-50 border-emerald-100' },
@@ -120,9 +172,8 @@ export default function ManureSalesPage() {
           { icon: '💰', label: 'All Time Revenue', value: `₦${totalRevenue.toLocaleString()}`, color: 'bg-sky-50 border-sky-100' },
           { icon: '⚠️', label: 'Unpaid / Partial', value: unpaid.length, color: 'bg-red-50 border-red-100' },
         ].map((s, i) => (
-          <motion.div key={i} initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-            className={`${s.color} rounded-3xl p-5 border`}>
+          <motion.div key={i} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }} className={`${s.color} rounded-3xl p-5 border`}>
             <div className="text-2xl mb-2">{s.icon}</div>
             <div className="text-xl font-black text-slate-900">{s.value}</div>
             <div className="text-sm text-slate-500 mt-1">{s.label}</div>
@@ -147,14 +198,10 @@ export default function ManureSalesPage() {
                   ))}
                 </tr>
               </thead>
-              
               <tbody className="divide-y divide-slate-50">
-                
                 {paginatedSales.map((s, i) => (
-                  <motion.tr key={s.id}
-                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="hover:bg-slate-50/60 transition-colors">
+                  <motion.tr key={s.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    transition={{ delay: i * 0.03 }} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-4 py-4 text-sm text-slate-600">
                       {new Date(s.saleDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
@@ -166,15 +213,11 @@ export default function ManureSalesPage() {
                     <td className="px-4 py-4 text-sm text-slate-600">₦{s.pricePerBag.toLocaleString()}</td>
                     <td className="px-4 py-4 font-bold text-slate-900 text-sm">₦{totalAmt(s).toLocaleString()}</td>
                     <td className="px-4 py-4 text-sm font-semibold text-emerald-600">₦{s.amountPaid.toLocaleString()}</td>
-                    <td className="px-4 py-4 text-sm font-bold"
-                      style={{ color: bal(s) > 0 ? '#dc2626' : '#16a34a' }}>
-                      ₦{bal(s).toLocaleString()}
-                    </td>
+                    <td className="px-4 py-4 text-sm font-bold" style={{ color: bal(s) > 0 ? '#dc2626' : '#16a34a' }}>₦{bal(s).toLocaleString()}</td>
                     <td className="px-4 py-4">
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                         s.paymentStatus === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
-                        s.paymentStatus === 'Partial' ? 'bg-amber-100 text-amber-700' :
-                        'bg-red-100 text-red-600'
+                        s.paymentStatus === 'Partial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'
                       }`}>{s.paymentStatus}</span>
                     </td>
                     <td className="px-4 py-4">
@@ -185,10 +228,22 @@ export default function ManureSalesPage() {
                             <CreditCard size={12} /> Pay
                           </button>
                         )}
-                        <button onClick={() => deleteSale(s.id)}
-                          className="text-xs font-bold text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1.5 rounded-xl transition-all">
-                          ✕
-                        </button>
+                        {receipts[s.id] ? (
+                          <button onClick={() => handleViewReceipt(s)} disabled={generatingId === s.id}
+                            className="flex items-center gap-1 text-xs font-bold text-violet-600 bg-violet-50 hover:bg-violet-100 px-2.5 py-1.5 rounded-xl transition-all disabled:opacity-60">
+                            {generatingId === s.id
+                              ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-violet-400 border-t-transparent" />
+                              : <><Eye size={12} /> View Receipt</>
+                            }
+                          </button>
+                        ) : (
+                          <button onClick={() => handleReceiptClick(s)}
+                            className="flex items-center gap-1 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-xl transition-all">
+                            <FileText size={12} /> Receipt
+                          </button>
+                        )}
+                        <button onClick={() => setConfirmModal({ isOpen: true, id: s.id })}
+                          className="text-xs font-bold text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-1.5 rounded-xl transition-all">✕</button>
                       </div>
                     </td>
                   </motion.tr>
@@ -204,70 +259,47 @@ export default function ManureSalesPage() {
                 </tr>
               </tfoot>
             </table>
-
           </div>
-          {/* Pagination */}
-        {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-white rounded-b-3xl">
-            <span className="text-sm text-slate-500 font-medium">
-            Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, sales.length)} of {sales.length} records
-            </span>
-            <div className="flex items-center gap-2">
-            <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-                ← Previous
-            </button>
-            <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button key={page} onClick={() => setCurrentPage(page)}
-                    className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
-                    currentPage === page
-                        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
-                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}>
-                    {page}
-                </button>
-                ))}
-            </div>
-            <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-                Next →
-            </button>
-            </div>
-        </div>
-        )}
 
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
+              <span className="text-sm text-slate-500 font-medium">
+                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, sales.length)} of {sales.length} records
+              </span>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">← Previous</button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button key={page} onClick={() => setCurrentPage(page)}
+                      className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
+                        currentPage === page ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}>{page}</button>
+                  ))}
+                </div>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">Next →</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Modal */}
+      {/* Add Sale Modal */}
       <AnimatePresence>
         {showModal && (
           <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowModal(false)}>
-            <motion.div
-              className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
-              initial={{ scale: 0.92, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)}>
+            <motion.div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
+              initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 16 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              onClick={e => e.stopPropagation()}>
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }} onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-xl">🌿</div>
                   <h2 className="font-black text-xl text-slate-900">Record Manure Sale</h2>
                 </div>
-                <button onClick={() => setShowModal(false)}
-                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all">
-                  <X size={20} />
-                </button>
+                <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
               </div>
               <form onSubmit={handleSubmit} className="p-7 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -275,8 +307,7 @@ export default function ManureSalesPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Customer Name</label>
                     <input placeholder="e.g. Farmer Joe" value={form.customerName}
                       onChange={e => setForm({ ...form, customerName: e.target.value })}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50"
-                      required />
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" required />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Phone</label>
@@ -290,15 +321,13 @@ export default function ManureSalesPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Number of Bags</label>
                     <input type="number" placeholder="e.g. 20" value={form.numberOfBags}
                       onChange={e => setForm({ ...form, numberOfBags: e.target.value })}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50"
-                      required />
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" required />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Price Per Bag (₦)</label>
                     <input type="number" placeholder="e.g. 500" value={form.pricePerBag}
                       onChange={e => setForm({ ...form, pricePerBag: e.target.value })}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50"
-                      required />
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" required />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -306,18 +335,15 @@ export default function ManureSalesPage() {
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Amount Paid (₦)</label>
                     <input type="number" placeholder="e.g. 5000" value={form.amountPaid}
                       onChange={e => setForm({ ...form, amountPaid: e.target.value })}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50"
-                      required />
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" required />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Sale Date</label>
                     <input type="date" value={form.saleDate}
                       onChange={e => setForm({ ...form, saleDate: e.target.value })}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50"
-                      required />
+                      className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" required />
                   </div>
                 </div>
-
                 {form.numberOfBags && form.pricePerBag && (
                   <div className="bg-emerald-50 rounded-2xl px-4 py-3 flex justify-between text-sm border border-emerald-100">
                     <span className="text-emerald-700 font-bold">Total: ₦{liveTotal.toLocaleString()}</span>
@@ -326,32 +352,88 @@ export default function ManureSalesPage() {
                     </span>
                   </div>
                 )}
-
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Notes (optional)</label>
                   <input placeholder="Any extra details..." value={form.notes}
                     onChange={e => setForm({ ...form, notes: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" />
                 </div>
-
                 <div className="flex gap-3 pt-1">
                   <button type="button" onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">
-                    Cancel
-                  </button>
-                  <motion.button type="submit"
-                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">
-                    Save Sale
-                  </motion.button>
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+                  <motion.button type="submit" whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save Sale</motion.button>
                 </div>
               </form>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-      
+
+      {/* Receipt Modal */}
+      <AnimatePresence>
+        {receiptModal.isOpen && receiptModal.sale && (
+          <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setReceiptModal({ isOpen: false, sale: null })}>
+            <motion.div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl"
+              initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-lime-50 text-xl">🧾</div>
+                  <h2 className="font-black text-xl text-slate-900">Generate Receipt</h2>
+                </div>
+                <button onClick={() => setReceiptModal({ isOpen: false, sale: null })}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
+              </div>
+              <div className="p-7 space-y-4">
+                <div className="bg-lime-50 rounded-2xl p-4 border border-lime-100">
+                  <div className="text-sm font-bold text-lime-700 mb-2">{farmProfile.farmName}</div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between"><span className="text-slate-500">Customer</span><span className="font-semibold">{receiptModal.sale.customerName}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Bags</span><span className="font-semibold">{receiptModal.sale.numberOfBags}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Total</span><span className="font-black text-lime-700">₦{totalAmt(receiptModal.sale).toLocaleString()}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Status</span>
+                      <span className={`font-bold ${receiptModal.sale.paymentStatus === 'Paid' ? 'text-emerald-600' : 'text-red-500'}`}>{receiptModal.sale.paymentStatus}</span>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Note (optional)</label>
+                  <input placeholder="e.g. Thank you for your patronage" value={ownerNotes}
+                    onChange={e => setOwnerNotes(e.target.value)}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" />
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <button onClick={() => setReceiptModal({ isOpen: false, sale: null })}
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+                  <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                    disabled={generatingId === receiptModal.sale.id}
+                    onClick={() => handleGenerateReceipt(receiptModal.sale, ownerNotes)}
+                    className="flex-1 py-3 rounded-2xl bg-lime-600 text-white font-bold hover:bg-lime-700 shadow-lg shadow-lime-200 flex items-center justify-center gap-2 disabled:opacity-60">
+                    {generatingId === receiptModal.sale.id
+                      ? <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      : <><FileText size={18} /> Download PDF</>
+                    }
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Record?"
+        message="This manure sale record will be permanently deleted. This cannot be undone."
+        confirmText="Yes, Delete"
+        type="danger"
+      />
     </div>
-    
   );
 }
