@@ -15,7 +15,9 @@ import ExpensesPage from './pages/expenses/ExpensesPage';
 import BirdSalesPage from './pages/birdsales/BirdSalesPage';
 import ManureSalesPage from './pages/manuresales/ManureSalesPage';
 import MortalityPage from './pages/mortality/MortalityPage';
+import FarmProfilePage from './pages/settings/FarmProfilePage';
 import Layout from './components/Layout';
+import VerifyPage from './pages/verify/VerifyPage';
 
 const PrivateRoute = ({ children }) => {
   const { user } = useAuth();
@@ -35,6 +37,12 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Public receipt verification pages */}
+          <Route path="/verify-sale/:id" element={<VerifyPage type="sale" />} />
+          <Route path="/verify-birdsale/:id" element={<VerifyPage type="birdsale" />} />
+          <Route path="/verify-manuresale/:id" element={<VerifyPage type="manuresale" />} />
+
           <Route path="/dashboard" element={
             <PrivateRoute><Layout /></PrivateRoute>
           }>
@@ -47,6 +55,7 @@ function App() {
             <Route path="bird-sales" element={<BirdSalesPage />} />
             <Route path="manure-sales" element={<ManureSalesPage />} />
             <Route path="mortality" element={<MortalityPage />} />
+            <Route path="settings" element={<FarmProfilePage />} />
           </Route>
         </Routes>
       </BrowserRouter>
