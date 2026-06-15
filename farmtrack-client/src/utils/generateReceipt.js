@@ -8,9 +8,20 @@ const formatCurrency = (amount) =>
 const formatDate = (date) =>
   new Date(date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' });
 
+const formatReceiptNo = (prefix, id) => `${prefix}${String(id).padStart(6, '0')}`;
+
+const slugify = (text) =>
+  (text || 'farm')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40)
+    .replace(/-+$/g, '') || 'farm';
+
 const loadImageAsBase64 = async (url) => {
   if (!url) return null;
-  if (url.startsWith('data:')) return url; // already base64 — no fetch needed
+  if (url.startsWith('data:')) return url;
   try {
     const response = await fetch(url);
     const blob = await response.blob();
@@ -43,20 +54,31 @@ const addHeader = (doc, title, farmProfile, logoBase64) => {
     doc.text('🐔', 15, 24);
   }
 
-  doc.setFontSize(18);
+  const farmName = farmProfile.farmName || 'Poultry Farm';
+  const maxNameWidth = 100; // keeps the farm name from colliding with the title on the right
+
+  // Auto-shrink long farm names so they wrap cleanly instead of overlapping the title
+  let nameFontSize = 17;
+  if (farmName.length > 24) nameFontSize = 14;
+  if (farmName.length > 36) nameFontSize = 11;
+
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text(farmProfile.farmName || 'Poultry Farm', 40, 18);
+  doc.setFontSize(nameFontSize);
+  const nameLines = doc.splitTextToSize(farmName, maxNameWidth).slice(0, 2);
+  const lineHeight = nameFontSize * 0.42;
+  nameLines.forEach((line, idx) => doc.text(line, 40, 15 + idx * lineHeight));
 
+  const infoY = 15 + nameLines.length * lineHeight + 8;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   const contactLine = [farmProfile.phone, farmProfile.email].filter(Boolean).join('   |   ');
-  if (contactLine) doc.text(contactLine, 40, 26);
-  if (farmProfile.address) doc.text(farmProfile.address, 40, 33);
+  if (contactLine) doc.text(contactLine, 40, infoY);
+  if (farmProfile.address) doc.text(farmProfile.address, 40, infoY + 6);
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, 195, 18, { align: 'right' });
+  doc.text(title, 195, 14, { align: 'right' });
 
   doc.setDrawColor(255, 255, 255);
   doc.setLineWidth(0.5);
@@ -100,7 +122,7 @@ const addReceiptInfo = (doc, receiptNo, date, customerName, customerPhone) => {
   doc.text('RECEIPT DETAILS', 20, 60);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 41, 59);
-  doc.text(`Receipt No: #${receiptNo}`, 20, 67);
+  doc.text(`Receipt No: ${receiptNo}`, 20, 67);
   doc.text(`Date: ${formatDate(date)}`, 20, 73);
 
   doc.setFillColor(241, 245, 249);
@@ -131,9 +153,10 @@ const addStatusBadge = (doc, status, y) => {
 export const generateEggSaleReceipt = async (sale, farmProfile = {}) => {
   const doc = new jsPDF();
   const logoBase64 = await loadImageAsBase64(farmProfile.logoUrl);
+  const receiptNo = formatReceiptNo('EG', sale.id);
 
   addHeader(doc, 'EGG SALE RECEIPT', farmProfile, logoBase64);
-  addReceiptInfo(doc, sale.id, sale.saleDate, sale.customerName, sale.customerPhone);
+  addReceiptInfo(doc, receiptNo, sale.saleDate, sale.customerName, sale.customerPhone);
 
   autoTable(doc, {
     startY: 88,
@@ -166,7 +189,8 @@ export const generateEggSaleReceipt = async (sale, farmProfile = {}) => {
     doc.text(`Note: ${farmProfile.notes}`, 15, finalY + 25);
   }
 
-  const verifyUrl = `${window.location.origin}/verify-sale/${sale.id}`;
+  const farmSlug = slugify(farmProfile.farmName);
+  const verifyUrl = `${window.location.origin}/verify/${farmSlug}/sale/${sale.id}`;
   await addFooter(doc, verifyUrl);
 
   return doc;
@@ -176,9 +200,10 @@ export const generateEggSaleReceipt = async (sale, farmProfile = {}) => {
 export const generateBirdSaleReceipt = async (sale, farmProfile = {}) => {
   const doc = new jsPDF();
   const logoBase64 = await loadImageAsBase64(farmProfile.logoUrl);
+  const receiptNo = formatReceiptNo('BS', sale.id);
 
   addHeader(doc, 'BIRD SALE RECEIPT', farmProfile, logoBase64);
-  addReceiptInfo(doc, sale.id, sale.saleDate, sale.customerName, sale.customerPhone);
+  addReceiptInfo(doc, receiptNo, sale.saleDate, sale.customerName, sale.customerPhone);
 
   autoTable(doc, {
     startY: 88,
@@ -211,7 +236,8 @@ export const generateBirdSaleReceipt = async (sale, farmProfile = {}) => {
     doc.text(`Note: ${farmProfile.notes}`, 15, finalY + 25);
   }
 
-  const verifyUrl = `${window.location.origin}/verify-birdsale/${sale.id}`;
+  const farmSlug = slugify(farmProfile.farmName);
+  const verifyUrl = `${window.location.origin}/verify/${farmSlug}/birdsale/${sale.id}`;
   await addFooter(doc, verifyUrl);
 
   return doc;
@@ -221,9 +247,10 @@ export const generateBirdSaleReceipt = async (sale, farmProfile = {}) => {
 export const generateManureSaleReceipt = async (sale, farmProfile = {}) => {
   const doc = new jsPDF();
   const logoBase64 = await loadImageAsBase64(farmProfile.logoUrl);
+  const receiptNo = formatReceiptNo('MN', sale.id);
 
   addHeader(doc, 'MANURE SALE RECEIPT', farmProfile, logoBase64);
-  addReceiptInfo(doc, sale.id, sale.saleDate, sale.customerName, sale.customerPhone);
+  addReceiptInfo(doc, receiptNo, sale.saleDate, sale.customerName, sale.customerPhone);
 
   autoTable(doc, {
     startY: 88,
@@ -256,7 +283,8 @@ export const generateManureSaleReceipt = async (sale, farmProfile = {}) => {
     doc.text(`Note: ${farmProfile.notes}`, 15, finalY + 25);
   }
 
-  const verifyUrl = `${window.location.origin}/verify-manuresale/${sale.id}`;
+  const farmSlug = slugify(farmProfile.farmName);
+  const verifyUrl = `${window.location.origin}/verify/${farmSlug}/manuresale/${sale.id}`;
   await addFooter(doc, verifyUrl);
 
   return doc;

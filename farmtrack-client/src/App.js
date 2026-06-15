@@ -42,6 +42,9 @@ function App() {
           <Route path="/verify-sale/:id" element={<VerifyPage type="sale" />} />
           <Route path="/verify-birdsale/:id" element={<VerifyPage type="birdsale" />} />
           <Route path="/verify-manuresale/:id" element={<VerifyPage type="manuresale" />} />
+          <Route path="/verify/:farmSlug/sale/:id" element={<VerifyPage type="sale" />} />
+          <Route path="/verify/:farmSlug/birdsale/:id" element={<VerifyPage type="birdsale" />} />
+          <Route path="/verify/:farmSlug/manuresale/:id" element={<VerifyPage type="manuresale" />} />
 
           <Route path="/dashboard" element={
             <PrivateRoute><Layout /></PrivateRoute>

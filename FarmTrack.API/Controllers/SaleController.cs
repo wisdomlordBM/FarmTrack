@@ -19,7 +19,7 @@ namespace FarmTrack.API.Controllers
         public async Task<IActionResult> GetAll()
         {
             var userId = UserHelper.GetUserId(User);
-            var sales = await _saleRepo.FindAsync(s => s.UserId == userId);
+            var sales = await _saleRepo.GetAllAsync(userId); // switched to GetAllAsync so Flock is included
             return Ok(sales.OrderByDescending(s => s.CreatedAt).Select(s => new {
                 id = s.Id,
                 customerName = s.CustomerName,
@@ -32,7 +32,8 @@ namespace FarmTrack.API.Controllers
                 paymentStatus = s.PaymentStatus,
                 saleDate = s.SaleDate,
                 recordedBy = s.RecordedBy,
-                createdAt = s.CreatedAt
+                createdAt = s.CreatedAt,
+                flockName = s.Flock?.BatchName   // ADD THIS
             }));
         }
 
@@ -65,6 +66,7 @@ namespace FarmTrack.API.Controllers
                 PricePerCrate = dto.PricePerCrate,
                 AmountPaid = dto.AmountPaid,
                 SaleDate = dto.SaleDate,
+                FlockId = dto.FlockId,           // ADD THIS
                 PaymentStatus = dto.AmountPaid >= dto.CratesSold * dto.PricePerCrate
                     ? "Paid" : dto.AmountPaid > 0 ? "Partial" : "Pending",
                 RecordedBy = userName,
@@ -100,5 +102,6 @@ namespace FarmTrack.API.Controllers
         public decimal PricePerCrate { get; set; }
         public decimal AmountPaid { get; set; }
         public DateTime SaleDate { get; set; }
+        public int? FlockId { get; set; }        // ADD THIS
     }
 }
