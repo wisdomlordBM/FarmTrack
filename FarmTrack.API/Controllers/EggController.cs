@@ -14,8 +14,17 @@ namespace FarmTrack.API.Controllers
     {
         private readonly IEggRecordRepository _eggRepo;
         private readonly IFlockRepository _flockRepo;
-        public EggController(IEggRecordRepository eggRepo, IFlockRepository flockRepo)
-        { _eggRepo = eggRepo; _flockRepo = flockRepo; }
+        private readonly ISaleRepository _saleRepo;   // ADD THIS
+
+        public EggController(
+            IEggRecordRepository eggRepo,
+            IFlockRepository flockRepo,
+            ISaleRepository saleRepo)                 // ADD THIS
+        {
+            _eggRepo = eggRepo;
+            _flockRepo = flockRepo;
+            _saleRepo = saleRepo;                     // ADD THIS
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetAll()
@@ -49,6 +58,45 @@ namespace FarmTrack.API.Controllers
                 notes = e.Notes,
                 recordedBy = e.RecordedBy
             }));
+        }
+
+        [HttpGet("stock")]
+        public async Task<IActionResult> GetStock()
+        {
+            var userId = UserHelper.GetUserId(User);
+            var eggRecords = await _eggRepo.GetAllAsync(userId);
+            var sales = await _saleRepo.GetAllAsync(userId);
+            var flocks = await _flockRepo.GetActiveFlocks(userId);
+
+            int EggsSold(int crates, int eggsPerCrate) => crates * (eggsPerCrate > 0 ? eggsPerCrate : 30);
+
+            var totalCollected = eggRecords.Sum(e => e.GoodEggs);
+            var totalSold = sales.Sum(s => EggsSold(s.CratesSold, s.EggsPerCrate));
+            var inStock = totalCollected - totalSold;
+
+            var flockBreakdown = flocks.Select(f =>
+            {
+                var collected = eggRecords.Where(e => e.FlockId == f.Id).Sum(e => e.GoodEggs);
+                var sold = sales.Where(s => s.FlockId == f.Id).Sum(s => EggsSold(s.CratesSold, s.EggsPerCrate));
+                return new
+                {
+                    flockId = f.Id,
+                    flockName = f.BatchName,
+                    collected,
+                    sold,
+                    inStock = collected - sold
+                };
+            });
+
+            return Ok(new
+            {
+                totalEggsCollected = totalCollected,
+                totalEggsSold = totalSold,
+                eggsInStock = inStock,
+                cratesInStock = inStock / 30,
+                remainderEggs = inStock % 30,
+                flocks = flockBreakdown
+            });
         }
 
         [HttpPost]

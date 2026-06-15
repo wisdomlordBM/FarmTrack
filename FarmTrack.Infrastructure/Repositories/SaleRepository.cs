@@ -9,8 +9,16 @@ namespace FarmTrack.Infrastructure.Repositories
     {
         public SaleRepository(AppDbContext context) : base(context) { }
 
+        public async Task<IEnumerable<Sale>> GetAllAsync(string userId)
+            => await _context.Sales
+                .Include(s => s.Flock)
+                .Where(s => s.UserId == userId)
+                .OrderByDescending(s => s.CreatedAt)
+                .ToListAsync();
+
         public async Task<IEnumerable<Sale>> GetUnpaidSalesAsync(string userId)
             => await _context.Sales
+                .Include(s => s.Flock)
                 .Where(s => s.PaymentStatus != "Paid" && s.UserId == userId)
                 .OrderByDescending(s => s.CreatedAt)
                 .ToListAsync();

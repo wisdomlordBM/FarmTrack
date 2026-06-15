@@ -10,6 +10,7 @@ export default function EggsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [todayTotal, setTodayTotal] = useState(0);
+  const [stock, setStock] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 7;
   const [form, setForm] = useState({
@@ -19,12 +20,13 @@ export default function EggsPage() {
   const load = async () => {
     setCurrentPage(1);
     try {
-      const [r, f, t] = await Promise.all([
-        API.get('/egg'), API.get('/flock'), API.get('/egg/today')
+      const [r, f, t, st] = await Promise.all([
+        API.get('/egg'), API.get('/flock'), API.get('/egg/today'), API.get('/egg/stock')
       ]);
       setRecords(r.data);
       setFlocks(f.data);
       setTodayTotal(t.data.totalEggsToday);
+      setStock(st.data);
     } catch {
       toast.error('Failed to load records');
     } finally {
@@ -85,7 +87,7 @@ export default function EggsPage() {
         </motion.button>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[
           { icon: '🥚', label: "Today's Eggs", value: todayTotal, color: 'bg-amber-50 border-amber-100' },
           { icon: '📦', label: "Today's Crates", value: Math.floor(todayTotal / 30), color: 'bg-emerald-50 border-emerald-100' },
@@ -101,6 +103,66 @@ export default function EggsPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Stock Overview */}
+      {stock && (
+        <div className="mb-8">
+          <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-br from-emerald-600 to-emerald-800 rounded-3xl p-6 text-white shadow-lg shadow-emerald-200 mb-4">
+            <div className="flex items-center justify-between flex-wrap gap-6">
+              <div>
+                <div className="text-emerald-100 text-sm font-medium mb-1">Eggs Currently In Stock</div>
+                <div className="text-4xl font-black">
+                  {Math.floor(stock.eggsInStock / 30)}
+                  <span className="text-lg font-bold text-emerald-200 ml-1.5">crates</span>
+                  {stock.eggsInStock % 30 !== 0 && (
+                    <span className="text-lg font-bold text-emerald-200"> + {Math.abs(stock.eggsInStock % 30)} eggs</span>
+                  )}
+                </div>
+                <div className="text-emerald-100 text-xs mt-1">{stock.eggsInStock.toLocaleString()} eggs total</div>
+              </div>
+              <div className="flex gap-8">
+                <div>
+                  <div className="text-emerald-200 text-xs font-medium">Total Collected</div>
+                  <div className="text-xl font-black">{stock.totalEggsCollected.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-emerald-200 text-xs font-medium">Total Sold</div>
+                  <div className="text-xl font-black">{stock.totalEggsSold.toLocaleString()}</div>
+                </div>
+              </div>
+            </div>
+            {stock.eggsInStock < 0 && (
+              <div className="mt-3 bg-red-500/20 border border-red-300/30 rounded-xl px-3 py-2 text-xs text-red-100">
+                ⚠️ Eggs sold exceed eggs collected on record — double-check your egg records and sales.
+              </div>
+            )}
+          </motion.div>
+
+          {stock.flocks && stock.flocks.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {stock.flocks.map(f => (
+                <motion.div key={f.flockId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-2xl border border-slate-200 p-4">
+                  <div className="text-xs font-bold text-emerald-700 bg-emerald-50 inline-block px-2 py-0.5 rounded-lg border border-emerald-100 mb-2 truncate max-w-full">
+                    {f.flockName}
+                  </div>
+                  <div className="text-lg font-black text-slate-900">
+                    {Math.floor(f.inStock / 30)}
+                    <span className="text-xs font-semibold text-slate-400 ml-1">crates</span>
+                    {f.inStock % 30 !== 0 && (
+                      <span className="text-xs font-semibold text-slate-400"> +{Math.abs(f.inStock % 30)}</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    {f.collected.toLocaleString()} collected · {f.sold.toLocaleString()} sold
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {records.length === 0 ? (
         <div className="bg-white rounded-3xl border border-slate-200 p-16 text-center shadow-sm">

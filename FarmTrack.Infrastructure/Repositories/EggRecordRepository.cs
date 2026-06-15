@@ -9,6 +9,13 @@ namespace FarmTrack.Infrastructure.Repositories
     {
         public EggRecordRepository(AppDbContext context) : base(context) { }
 
+        public async Task<IEnumerable<EggRecord>> GetAllAsync(string userId)   // ADD THIS
+            => await _context.EggRecords
+                .Include(e => e.Flock)
+                .Where(e => e.UserId == userId)
+                .OrderByDescending(e => e.CreatedAt)
+                .ToListAsync();
+
         public async Task<IEnumerable<EggRecord>> GetByDateRangeAsync(
             DateTime from, DateTime to, string userId)
             => await _context.EggRecords

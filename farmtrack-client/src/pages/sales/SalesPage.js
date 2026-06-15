@@ -9,6 +9,7 @@ import { generateEggSaleReceipt } from '../../utils/generateReceipt';
 export default function SalesPage() {
   const navigate = useNavigate();
   const [sales, setSales] = useState([]);
+  const [flocks, setFlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [monthRevenue, setMonthRevenue] = useState(0);
@@ -16,24 +17,25 @@ export default function SalesPage() {
   const [receiptModal, setReceiptModal] = useState({ isOpen: false, sale: null });
   const [ownerNotes, setOwnerNotes] = useState('');
   const [generatingId, setGeneratingId] = useState(null);
-  const [receipts, setReceipts] = useState({}); // { saleId: true }
+  const [receipts, setReceipts] = useState({});
   const [farmProfile, setFarmProfile] = useState({});
+  const [payModal, setPayModal] = useState({ isOpen: false, id: null, amount: '' }); // NEW
   const ITEMS_PER_PAGE = 7;
   const [form, setForm] = useState({
-    customerName: '', customerPhone: '', cratesSold: '',
+    flockId: '', customerName: '', customerPhone: '', cratesSold: '',
     pricePerCrate: '', amountPaid: '', saleDate: ''
   });
 
   const load = async () => {
     setCurrentPage(1);
     try {
-      const [s, r, p] = await Promise.all([
-        API.get('/sale'), API.get('/sale/revenue/month'), API.get('/farmprofile')
+      const [s, r, p, f] = await Promise.all([
+        API.get('/sale'), API.get('/sale/revenue/month'), API.get('/farmprofile'), API.get('/flock')
       ]);
       setSales(s.data);
       setMonthRevenue(r.data.revenueThisMonth);
       setFarmProfile(p.data);
-
+      setFlocks(f.data);
       const stored = {};
       s.data.forEach(sale => {
         if (localStorage.getItem(`farmtrack_receipt_sale_${sale.id}`)) stored[sale.id] = true;
@@ -56,25 +58,31 @@ export default function SalesPage() {
     try {
       await API.post('/sale', {
         ...form,
+        flockId: form.flockId ? parseInt(form.flockId) : null,
         cratesSold: parseInt(form.cratesSold),
         pricePerCrate: parseFloat(form.pricePerCrate),
         amountPaid: parseFloat(form.amountPaid)
       });
       toast.success('Sale recorded! 💰');
       setShowModal(false);
-      setForm({ customerName: '', customerPhone: '', cratesSold: '', pricePerCrate: '', amountPaid: '', saleDate: '' });
+      setForm({ flockId: '', customerName: '', customerPhone: '', cratesSold: '', pricePerCrate: '', amountPaid: '', saleDate: '' });
       load();
     } catch {
       toast.error('Failed to record sale');
     }
   };
 
-  const markPaid = async (id) => {
-    const amount = prompt('Enter amount paid (₦):');
-    if (!amount || isNaN(amount)) return;
+  // REPLACED prompt() with modal submit handler
+  const handlePaySubmit = async () => {
+    const amount = parseFloat(payModal.amount);
+    if (!payModal.amount || isNaN(amount) || amount <= 0) {
+      toast.error('Enter a valid amount');
+      return;
+    }
     try {
-      await API.put(`/sale/${id}/pay`, parseFloat(amount), { headers: { 'Content-Type': 'application/json' } });
+      await API.put(`/sale/${payModal.id}/pay`, amount, { headers: { 'Content-Type': 'application/json' } });
       toast.success('Payment updated!');
+      setPayModal({ isOpen: false, id: null, amount: '' });
       load();
     } catch {
       toast.error('Failed to update payment');
@@ -180,7 +188,7 @@ export default function SalesPage() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  {['Date', 'Customer', 'Crates', 'Total', 'Paid', 'Balance', 'Status', ''].map(h => (
+                  {['Date', 'Flock', 'Customer', 'Crates', 'Total', 'Paid', 'Balance', 'Status', ''].map(h => (
                     <th key={h} className="px-5 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -191,6 +199,11 @@ export default function SalesPage() {
                     transition={{ delay: i * 0.03 }} className="hover:bg-slate-50/60 transition-colors">
                     <td className="px-5 py-4 text-sm text-slate-600 font-medium">
                       {new Date(s.saleDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-100">
+                        {s.flockName || 'Mixed'}
+                      </span>
                     </td>
                     <td className="px-5 py-4">
                       <div className="font-semibold text-slate-900 text-sm">{s.customerName}</div>
@@ -211,7 +224,7 @@ export default function SalesPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         {s.paymentStatus !== 'Paid' && (
-                          <button onClick={() => markPaid(s.id)}
+                          <button onClick={() => setPayModal({ isOpen: true, id: s.id, amount: '' })}
                             className="flex items-center gap-1.5 text-xs font-bold text-sky-600 hover:text-sky-700 bg-sky-50 hover:bg-sky-100 px-3 py-1.5 rounded-xl border border-sky-100 transition-all">
                             <CreditCard size={13} /> Pay
                           </button>
@@ -262,6 +275,52 @@ export default function SalesPage() {
         </div>
       )}
 
+      {/* Pay Modal */}
+      <AnimatePresence>
+        {payModal.isOpen && (
+          <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setPayModal({ isOpen: false, id: null, amount: '' })}>
+            <motion.div className="bg-white rounded-[2rem] w-full max-w-sm shadow-2xl"
+              initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 16 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }} onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between px-7 py-5 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sky-50 text-xl">💳</div>
+                  <h2 className="font-black text-xl text-slate-900">Record Payment</h2>
+                </div>
+                <button onClick={() => setPayModal({ isOpen: false, id: null, amount: '' })}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
+              </div>
+              <div className="p-7 space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Amount Paid (₦)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 5000"
+                    value={payModal.amount}
+                    onChange={e => setPayModal(p => ({ ...p, amount: e.target.value }))}
+                    onKeyDown={e => e.key === 'Enter' && handlePaySubmit()}
+                    autoFocus
+                    className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100 bg-slate-50 text-slate-900 text-lg font-bold"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setPayModal({ isOpen: false, id: null, amount: '' })}
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
+                  <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                    onClick={handlePaySubmit}
+                    className="flex-1 py-3 rounded-2xl bg-sky-500 text-white font-bold hover:bg-sky-600 shadow-lg shadow-sky-200 flex items-center justify-center gap-2">
+                    <CreditCard size={16} /> Confirm
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Add Sale Modal */}
       <AnimatePresence>
         {showModal && (
@@ -279,6 +338,15 @@ export default function SalesPage() {
                 <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
               </div>
               <form onSubmit={handleSubmit} className="p-7 space-y-5">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Flock (optional)</label>
+                  <select value={form.flockId} onChange={e => setForm({ ...form, flockId: e.target.value })}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50 text-slate-900">
+                    <option value="">Mixed / Not specified</option>
+                    {flocks.map(f => <option key={f.id} value={f.id}>{f.batchName}</option>)}
+                  </select>
+                  <p className="text-xs text-slate-400 mt-1.5">Helps track which flock's eggs are being sold for stock records.</p>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-2">Customer Name</label>

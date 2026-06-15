@@ -42,6 +42,11 @@ namespace FarmTrack.Infrastructure.Data
 
             builder.Entity<Sale>(entity =>
             {
+                entity.HasOne(s => s.Flock)
+                .WithMany()
+                .HasForeignKey(s => s.FlockId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .IsRequired(false);
                 entity.Ignore(e => e.TotalAmount);
                 entity.Ignore(e => e.Balance);
                 entity.Property(e => e.CustomerName).IsRequired().HasMaxLength(100);
