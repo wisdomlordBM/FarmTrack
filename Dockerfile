@@ -2,14 +2,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy solution and project files
-COPY FarmTrack.sln .
+# Copy project files
 COPY FarmTrack.API/FarmTrack.API.csproj FarmTrack.API/
 COPY FarmTrack.Core/FarmTrack.Core.csproj FarmTrack.Core/
 COPY FarmTrack.Infrastructure/FarmTrack.Infrastructure.csproj FarmTrack.Infrastructure/
 
 # Restore dependencies
-RUN dotnet restore
+RUN dotnet restore FarmTrack.API/FarmTrack.API.csproj
 
 # Copy all source code
 COPY . .
