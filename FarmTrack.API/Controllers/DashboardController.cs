@@ -76,6 +76,13 @@ namespace FarmTrack.API.Controllers
                 eggTrend = trend
             });
         }
+        [HttpHead("public-stats")]
+        [AllowAnonymous]
+        public IActionResult HeadPublicStats()
+        {
+            return Ok();
+        }
+
         [HttpGet("public-stats")]
         [AllowAnonymous]
         public async Task<IActionResult> GetPublicStats()

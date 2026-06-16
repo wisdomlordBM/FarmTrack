@@ -64,13 +64,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAll", policy =>
     {
         policy.WithOrigins(
-    "http://localhost:3000",
-    "https://localhost:3000",
-    "https://farmtrack-pro.netlify.app"
-)
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
+            "http://localhost:3000",
+            "https://localhost:3000",
+            "https://farmtrack-pro.netlify.app"
+        )
+        .AllowAnyMethod()
+        .AllowAnyHeader()
+        .AllowCredentials();
     });
 });
 builder.Services.AddControllers()
