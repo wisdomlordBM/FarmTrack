@@ -2,6 +2,7 @@
 using FarmTrack.Core.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace FarmTrack.Infrastructure.Data
 {
@@ -27,6 +28,41 @@ namespace FarmTrack.Infrastructure.Data
         {
             base.OnModelCreating(builder);
 
+            var dateTimeConverter = new ValueConverter<DateTime, DateTime>(
+                v => v.Kind == DateTimeKind.Utc
+                    ? v
+                    : DateTime.SpecifyKind(v, DateTimeKind.Utc),
+
+                v => DateTime.SpecifyKind(v, DateTimeKind.Utc)
+            );
+
+
+            var nullableDateTimeConverter = new ValueConverter<DateTime?, DateTime?>(
+                v => v.HasValue
+                    ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)
+                    : null,
+
+                v => v.HasValue
+                    ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc)
+                    : null
+            );
+
+
+            foreach (var entityType in builder.Model.GetEntityTypes())
+            {
+                foreach (var property in entityType.GetProperties())
+                {
+                    if (property.ClrType == typeof(DateTime))
+                    {
+                        property.SetValueConverter(dateTimeConverter);
+                    }
+
+                    if (property.ClrType == typeof(DateTime?))
+                    {
+                        property.SetValueConverter(nullableDateTimeConverter);
+                    }
+                }
+            }
             builder.Entity<Flock>(entity =>
             {
                 entity.Property(e => e.BatchName).IsRequired().HasMaxLength(100);
