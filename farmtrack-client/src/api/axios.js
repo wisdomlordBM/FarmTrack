@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'https://localhost:44340/api',
+  baseURL: process.env.REACT_APP_API_URL || 'https://farmtrack-api-res8.onrender.com/api',
 });
 
 API.interceptors.request.use((config) => {
