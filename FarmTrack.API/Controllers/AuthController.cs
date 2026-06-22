@@ -72,27 +72,34 @@ namespace FarmTrack.API.Controllers
                 Expiry = DateTime.UtcNow.AddDays(7)
             });
         }
-
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword(
-            [FromBody] ForgotPasswordRequest dto,  
-            [FromServices] EmailService emailService)
+    [FromBody] ForgotPasswordRequest dto,
+    [FromServices] EmailService emailService)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
             if (user == null)
                 return BadRequest(new { message = "Email not found" });
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var encodedToken = Uri.EscapeDataString(token);
-            var origin = Request.Headers["Origin"].ToString();
-            if (string.IsNullOrEmpty(origin)) origin = "https://farmtrack-pro.netlify.app";
-            var resetLink = $"{origin}/reset-password?token={encodedToken}&email={dto.Email}";
+            try
+            {
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var encodedToken = Uri.EscapeDataString(token);
+                var origin = Request.Headers["Origin"].ToString();
+                if (string.IsNullOrEmpty(origin)) origin = "https://farmtrack-pro.netlify.app";
+                var resetLink = $"{origin}/reset-password?token={encodedToken}&email={dto.Email}";
 
-            await emailService.SendPasswordResetEmailAsync(dto.Email, resetLink);
-
-            return Ok(new { message = "Reset link sent to your email" });
+                await emailService.SendPasswordResetEmailAsync(dto.Email, resetLink);
+                return Ok(new { message = "Reset link sent to your email" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Email Error] {ex.Message}");
+                return StatusCode(500, new { message = "Failed to send email. Please try again." });
+            }
         }
+
 
         [HttpPost("reset-password")]
         [AllowAnonymous]
