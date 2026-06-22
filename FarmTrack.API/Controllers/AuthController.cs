@@ -76,7 +76,7 @@ namespace FarmTrack.API.Controllers
         [HttpPost("forgot-password")]
         [AllowAnonymous]
         public async Task<IActionResult> ForgotPassword(
-            [FromBody] ForgotPasswordRequest dto,
+            [FromBody] ForgotPasswordRequest dto,  
             [FromServices] EmailService emailService)
         {
             var user = await _userManager.FindByEmailAsync(dto.Email);
@@ -85,7 +85,9 @@ namespace FarmTrack.API.Controllers
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
             var encodedToken = Uri.EscapeDataString(token);
-            var resetLink = $"http://localhost:3000/reset-password?token={encodedToken}&email={dto.Email}";
+            var origin = Request.Headers["Origin"].ToString();
+            if (string.IsNullOrEmpty(origin)) origin = "https://farmtrack-pro.netlify.app";
+            var resetLink = $"{origin}/reset-password?token={encodedToken}&email={dto.Email}";
 
             await emailService.SendPasswordResetEmailAsync(dto.Email, resetLink);
 
