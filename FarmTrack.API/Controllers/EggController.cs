@@ -122,6 +122,17 @@ namespace FarmTrack.API.Controllers
             await _eggRepo.SaveChangesAsync();
             return Ok(new { message = "Egg record saved", record.Id });
         }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = UserHelper.GetUserId(User);
+            var record = await _eggRepo.GetByIdAsync(id);
+            if (record == null || record.UserId != userId)
+                return NotFound(new { message = "Record not found" });
+            _eggRepo.Delete(record);
+            await _eggRepo.SaveChangesAsync();
+            return Ok(new { message = "Egg record deleted" });
+        }
     }
 
     public class CreateEggRecordRequest

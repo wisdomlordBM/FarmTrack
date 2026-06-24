@@ -11,6 +11,7 @@ export default function FlocksPage() {
   const [showModal, setShowModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
+  const [submitting, setSubmitting] = useState(false);
   const ITEMS_PER_PAGE = 6;
   const [form, setForm] = useState({
     batchName: '', birdType: 'Layer', totalBirds: '', dateAcquired: ''
@@ -27,6 +28,7 @@ export default function FlocksPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       await API.post('/flock', { ...form, totalBirds: parseInt(form.totalBirds) });
       toast.success('Flock added successfully! 🐔');
@@ -35,6 +37,8 @@ export default function FlocksPage() {
       load();
     } catch {
       toast.error('Failed to add flock');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -187,7 +191,7 @@ export default function FlocksPage() {
         {showModal && (
           <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowModal(false)}>
+            onClick={() => !submitting && setShowModal(false)}>
             <motion.div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl shadow-slate-300/40"
               initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 16 }}
@@ -198,7 +202,7 @@ export default function FlocksPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-xl">🐔</div>
                   <h2 className="font-black text-xl text-slate-900">Add New Flock</h2>
                 </div>
-                <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all">
+                <button onClick={() => !submitting && setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all">
                   <X size={20} />
                 </button>
               </div>
@@ -229,11 +233,16 @@ export default function FlocksPage() {
                     className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50 text-slate-900" required />
                 </div>
                 <div className="flex gap-3 pt-1">
-                  <button type="button" onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
-                  <motion.button type="submit" whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">
-                    Add Flock
+                  <button type="button" onClick={() => !submitting && setShowModal(false)}
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 disabled:opacity-60">Cancel</button>
+                  <motion.button type="submit" disabled={submitting}
+                    whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.99 }}
+                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {submitting
+                      ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Please wait...</>
+                      : 'Add Flock'
+                    }
                   </motion.button>
                 </div>
               </form>

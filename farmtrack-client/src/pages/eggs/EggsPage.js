@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Egg } from 'lucide-react';
+import { Plus, X, Egg, Trash2 } from 'lucide-react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function EggsPage() {
   const [records, setRecords] = useState([]);
   const [flocks, setFlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [todayTotal, setTodayTotal] = useState(0);
   const [stock, setStock] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
   const ITEMS_PER_PAGE = 7;
   const [form, setForm] = useState({
     flockId: '', collectionDate: '', totalCollected: '', crackedEggs: '', notes: ''
@@ -38,6 +41,7 @@ export default function EggsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       await API.post('/egg', {
         ...form,
@@ -51,6 +55,18 @@ export default function EggsPage() {
       load();
     } catch {
       toast.error('Failed to save record');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await API.delete(`/egg/${confirmModal.id}`);
+      toast.success('Record deleted');
+      load();
+    } catch {
+      toast.error('Failed to delete');
     }
   };
 
@@ -104,7 +120,6 @@ export default function EggsPage() {
         ))}
       </div>
 
-      {/* Stock Overview */}
       {stock && (
         <div className="mb-8">
           <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }}
@@ -178,7 +193,7 @@ export default function EggsPage() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
-                  {['Date', 'Flock', 'Total', 'Good', 'Cracked', 'Crates', 'By'].map(h => (
+                  {['Date', 'Flock', 'Total', 'Good', 'Cracked', 'Crates', 'By', ''].map(h => (
                     <th key={h} className="px-5 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
                   ))}
                 </tr>
@@ -216,6 +231,12 @@ export default function EggsPage() {
                       {Math.floor(r.totalCollected / 30)}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-400">{r.recordedBy}</td>
+                    <td className="px-5 py-4">
+                      <button onClick={() => setConfirmModal({ isOpen: true, id: r.id })}
+                        className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all">
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
                   </motion.tr>
                 ))}
               </tbody>
@@ -228,26 +249,18 @@ export default function EggsPage() {
                 Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, records.length)} of {records.length} records
               </span>
               <div className="flex items-center gap-2">
-                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                  ← Previous
-                </button>
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">← Previous</button>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                     <button key={page} onClick={() => setCurrentPage(page)}
                       className={`w-9 h-9 rounded-xl text-sm font-bold transition-all ${
-                        currentPage === page
-                          ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
-                          : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        currentPage === page ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}>{page}</button>
                   ))}
                 </div>
-                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                  Next →
-                </button>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all">Next →</button>
               </div>
             </div>
           )}
@@ -258,7 +271,7 @@ export default function EggsPage() {
         {showModal && (
           <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            onClick={() => setShowModal(false)}>
+            onClick={() => !submitting && setShowModal(false)}>
             <motion.div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl shadow-slate-300/40"
               initial={{ scale: 0.92, opacity: 0, y: 16 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -270,7 +283,7 @@ export default function EggsPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-xl">🥚</div>
                   <h2 className="font-black text-xl text-slate-900">Record Collection</h2>
                 </div>
-                <button onClick={() => setShowModal(false)}
+                <button onClick={() => !submitting && setShowModal(false)}
                   className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all">
                   <X size={20} />
                 </button>
@@ -278,8 +291,7 @@ export default function EggsPage() {
               <form onSubmit={handleSubmit} className="p-7 space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Flock</label>
-                  <select value={form.flockId}
-                    onChange={e => setForm({ ...form, flockId: e.target.value })}
+                  <select value={form.flockId} onChange={e => setForm({ ...form, flockId: e.target.value })}
                     className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50 text-slate-900"
                     required>
                     <option value="">Select flock</option>
@@ -322,14 +334,18 @@ export default function EggsPage() {
                     className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50 text-slate-900" />
                 </div>
                 <div className="flex gap-3 pt-1">
-                  <button type="button" onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">
+                  <button type="button" onClick={() => !submitting && setShowModal(false)}
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 disabled:opacity-60">
                     Cancel
                   </button>
-                  <motion.button type="submit"
-                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">
-                    Save Record
+                  <motion.button type="submit" disabled={submitting}
+                    whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.99 }}
+                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {submitting
+                      ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Please wait...</>
+                      : 'Save Record'
+                    }
                   </motion.button>
                 </div>
               </form>
@@ -337,6 +353,16 @@ export default function EggsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Egg Record?"
+        message="This egg record will be permanently deleted. This cannot be undone."
+        confirmText="Yes, Delete"
+        type="danger"
+      />
     </div>
   );
 }

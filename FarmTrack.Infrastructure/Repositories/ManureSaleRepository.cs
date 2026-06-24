@@ -9,6 +9,19 @@ namespace FarmTrack.Infrastructure.Repositories
     {
         public ManureSaleRepository(AppDbContext context) : base(context) { }
 
+        public async Task<IEnumerable<ManureSale>> GetAllAsync(string userId)
+            => await _context.ManureSales
+                .Where(m => m.UserId == userId)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
+
+        public async Task<IEnumerable<ManureSale>> GetByDateRangeAsync(
+            DateTime from, DateTime to, string userId)
+            => await _context.ManureSales
+                .Where(m => m.SaleDate >= from && m.SaleDate < to && m.UserId == userId)
+                .OrderByDescending(m => m.CreatedAt)
+                .ToListAsync();
+
         public async Task<decimal> GetTotalRevenueThisMonthAsync(string userId)
         {
             var now = DateTime.UtcNow;
