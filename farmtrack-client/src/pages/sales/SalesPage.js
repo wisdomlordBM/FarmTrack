@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, ShoppingCart, CreditCard, FileText, Eye } from 'lucide-react';
+import { Plus, X, ShoppingCart, CreditCard, FileText, Eye, Trash2 } from 'lucide-react';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
 import { generateEggSaleReceipt } from '../../utils/generateReceipt';
+import ConfirmModal from '../../components/ConfirmModal';
 
 export default function SalesPage() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function SalesPage() {
   const [flocks, setFlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [monthRevenue, setMonthRevenue] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [receiptModal, setReceiptModal] = useState({ isOpen: false, sale: null });
@@ -19,7 +21,8 @@ export default function SalesPage() {
   const [generatingId, setGeneratingId] = useState(null);
   const [receipts, setReceipts] = useState({});
   const [farmProfile, setFarmProfile] = useState({});
-  const [payModal, setPayModal] = useState({ isOpen: false, id: null, amount: '' }); // NEW
+  const [payModal, setPayModal] = useState({ isOpen: false, id: null, amount: '' });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null });
   const ITEMS_PER_PAGE = 7;
   const [form, setForm] = useState({
     flockId: '', customerName: '', customerPhone: '', cratesSold: '',
@@ -55,6 +58,7 @@ export default function SalesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       await API.post('/sale', {
         ...form,
@@ -69,15 +73,15 @@ export default function SalesPage() {
       load();
     } catch {
       toast.error('Failed to record sale');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // REPLACED prompt() with modal submit handler
   const handlePaySubmit = async () => {
     const amount = parseFloat(payModal.amount);
     if (!payModal.amount || isNaN(amount) || amount <= 0) {
-      toast.error('Enter a valid amount');
-      return;
+      toast.error('Enter a valid amount'); return;
     }
     try {
       await API.put(`/sale/${payModal.id}/pay`, amount, { headers: { 'Content-Type': 'application/json' } });
@@ -89,11 +93,20 @@ export default function SalesPage() {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    try {
+      await API.delete(`/sale/${confirmModal.id}`);
+      toast.success('Sale deleted');
+      load();
+    } catch {
+      toast.error('Failed to delete');
+    }
+  };
+
   const handleReceiptClick = (sale) => {
     if (!farmProfile.isSetup) {
       toast.error('Please set up your Farm Profile first');
-      navigate('/dashboard/settings');
-      return;
+      navigate('/dashboard/settings'); return;
     }
     setOwnerNotes('');
     setReceiptModal({ isOpen: true, sale });
@@ -119,8 +132,7 @@ export default function SalesPage() {
   const handleViewReceipt = async (sale) => {
     if (!farmProfile.isSetup) {
       toast.error('Please set up your Farm Profile first');
-      navigate('/dashboard/settings');
-      return;
+      navigate('/dashboard/settings'); return;
     }
     setGeneratingId(sale.id);
     try {
@@ -243,6 +255,10 @@ export default function SalesPage() {
                             <FileText size={13} /> Receipt
                           </button>
                         )}
+                        <button onClick={() => setConfirmModal({ isOpen: true, id: s.id })}
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all">
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </td>
                   </motion.tr>
@@ -296,15 +312,11 @@ export default function SalesPage() {
               <div className="p-7 space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Amount Paid (₦)</label>
-                  <input
-                    type="number"
-                    placeholder="e.g. 5000"
-                    value={payModal.amount}
+                  <input type="number" placeholder="e.g. 5000" value={payModal.amount}
                     onChange={e => setPayModal(p => ({ ...p, amount: e.target.value }))}
                     onKeyDown={e => e.key === 'Enter' && handlePaySubmit()}
                     autoFocus
-                    className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100 bg-slate-50 text-slate-900 text-lg font-bold"
-                  />
+                    className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-sky-400 focus:ring-4 focus:ring-sky-100 bg-slate-50 text-slate-900 text-lg font-bold" />
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setPayModal({ isOpen: false, id: null, amount: '' })}
@@ -325,7 +337,8 @@ export default function SalesPage() {
       <AnimatePresence>
         {showModal && (
           <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)}>
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => !submitting && setShowModal(false)}>
             <motion.div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl shadow-slate-300/40 max-h-[90vh] overflow-y-auto"
               initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 16 }}
@@ -335,7 +348,8 @@ export default function SalesPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-xl">💰</div>
                   <h2 className="font-black text-xl text-slate-900">Record Sale</h2>
                 </div>
-                <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
+                <button onClick={() => !submitting && setShowModal(false)}
+                  className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
               </div>
               <form onSubmit={handleSubmit} className="p-7 space-y-5">
                 <div>
@@ -404,10 +418,17 @@ export default function SalesPage() {
                   </div>
                 )}
                 <div className="flex gap-3 pt-1">
-                  <button type="button" onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
-                  <motion.button type="submit" whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save Sale</motion.button>
+                  <button type="button" onClick={() => !submitting && setShowModal(false)}
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 disabled:opacity-60">Cancel</button>
+                  <motion.button type="submit" disabled={submitting}
+                    whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.99 }}
+                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {submitting
+                      ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Please wait...</>
+                      : 'Save Sale'
+                    }
+                  </motion.button>
                 </div>
               </form>
             </motion.div>
@@ -469,6 +490,16 @@ export default function SalesPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Sale?"
+        message="This sale record will be permanently deleted. This cannot be undone."
+        confirmText="Yes, Delete"
+        type="danger"
+      />
     </div>
   );
 }

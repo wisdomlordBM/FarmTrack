@@ -101,6 +101,18 @@ namespace FarmTrack.API.Controllers
             await _birdSaleRepo.SaveChangesAsync();
             return Ok(new { message = "Payment updated" });
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = UserHelper.GetUserId(User);
+            var sale = await _birdSaleRepo.GetByIdAsync(id);
+            if (sale == null || sale.UserId != userId)
+                return NotFound(new { message = "Sale not found" });
+            _birdSaleRepo.Delete(sale);
+            await _birdSaleRepo.SaveChangesAsync();
+            return Ok(new { message = "Deleted" });
+        }
     }
 
     public class CreateBirdSaleRequest

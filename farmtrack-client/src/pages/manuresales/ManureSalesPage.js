@@ -20,7 +20,8 @@ export default function ManureSalesPage() {
   const [generatingId, setGeneratingId] = useState(null);
   const [receipts, setReceipts] = useState({});
   const [farmProfile, setFarmProfile] = useState({});
-  const [payModal, setPayModal] = useState({ isOpen: false, id: null, amount: '' }); // NEW
+  const [payModal, setPayModal] = useState({ isOpen: false, id: null, amount: '' });
+  const [submitting, setSubmitting] = useState(false);
   const ITEMS_PER_PAGE = 7;
   const [form, setForm] = useState({
     customerName: '', customerPhone: '', numberOfBags: '',
@@ -55,6 +56,7 @@ export default function ManureSalesPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       await API.post('/manuresale', {
         ...form,
@@ -68,6 +70,8 @@ export default function ManureSalesPage() {
       load();
     } catch {
       toast.error('Failed to record sale');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -340,7 +344,8 @@ export default function ManureSalesPage() {
       <AnimatePresence>
         {showModal && (
           <motion.div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)}>
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => !submitting && setShowModal(false)}>
             <motion.div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
               initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.92, opacity: 0, y: 16 }}
@@ -350,7 +355,7 @@ export default function ManureSalesPage() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-xl">🌿</div>
                   <h2 className="font-black text-xl text-slate-900">Record Manure Sale</h2>
                 </div>
-                <button onClick={() => setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
+                <button onClick={() => !submitting && setShowModal(false)} className="p-2 rounded-xl hover:bg-slate-100 text-slate-400 transition-all"><X size={20} /></button>
               </div>
               <form onSubmit={handleSubmit} className="p-7 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
@@ -410,10 +415,17 @@ export default function ManureSalesPage() {
                     className="w-full px-4 py-3 border border-slate-200 rounded-2xl focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100 bg-slate-50" />
                 </div>
                 <div className="flex gap-3 pt-1">
-                  <button type="button" onClick={() => setShowModal(false)}
-                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">Cancel</button>
-                  <motion.button type="submit" whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200">Save Sale</motion.button>
+                  <button type="button" onClick={() => !submitting && setShowModal(false)}
+                    disabled={submitting}
+                    className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 disabled:opacity-60">Cancel</button>
+                  <motion.button type="submit" disabled={submitting}
+                    whileHover={{ scale: submitting ? 1 : 1.01 }} whileTap={{ scale: submitting ? 1 : 0.99 }}
+                    className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    {submitting
+                      ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Please wait...</>
+                      : 'Save Sale'
+                    }
+                  </motion.button>
                 </div>
               </form>
             </motion.div>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Skull } from 'lucide-react';
+import { Plus, X, Skull, Trash2 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import API from '../../api/axios';
 import toast from 'react-hot-toast';
+import ConfirmModal from '../../components/ConfirmModal';
 
 const CAUSES = [
   { label: 'Disease', icon: '🦠', color: '#dc2626' },
@@ -22,8 +23,10 @@ export default function MortalityPage() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('Records');
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, id: null, birds: 0 });
   const ITEMS_PER_PAGE = 7;
   const [form, setForm] = useState({
     flockId: '', date: '', numberDied: '', cause: 'Disease'
@@ -53,10 +56,12 @@ export default function MortalityPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     if (selectedFlock && parseInt(form.numberDied) > selectedFlock.aliveBirds) {
       toast.error(`Only ${selectedFlock.aliveBirds} birds alive in this flock`);
       return;
     }
+    setSubmitting(true);
     try {
       await API.post('/mortality', {
         ...form,
@@ -69,6 +74,19 @@ export default function MortalityPage() {
       load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to record');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      await API.delete(`/mortality/${confirmModal.id}`);
+      toast.success(`Record deleted — ${confirmModal.birds} birds restored to flock`);
+      setConfirmModal({ isOpen: false, id: null, birds: 0 });
+      load();
+    } catch {
+      toast.error('Failed to delete record');
     }
   };
 
@@ -95,7 +113,6 @@ export default function MortalityPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">Mortality Records</h1>
@@ -109,7 +126,6 @@ export default function MortalityPage() {
         </motion.button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { icon: '💀', label: 'Deaths This Month', value: totalThisMonth, color: 'bg-rose-50 border-rose-100' },
@@ -128,7 +144,6 @@ export default function MortalityPage() {
         ))}
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl mb-6 w-fit">
         {['Records', 'By Cause'].map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)}
@@ -140,7 +155,6 @@ export default function MortalityPage() {
         ))}
       </div>
 
-      {/* Records Tab */}
       {activeTab === 'Records' && (
         <>
           {records.length === 0 ? (
@@ -157,7 +171,7 @@ export default function MortalityPage() {
                 <table className="w-full">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
-                      {['Date', 'Flock', 'Birds Died', 'Cause', 'Recorded By'].map(h => (
+                      {['Date', 'Flock', 'Birds Died', 'Cause', 'Recorded By', ''].map(h => (
                         <th key={h} className="px-5 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">{h}</th>
                       ))}
                     </tr>
@@ -189,6 +203,13 @@ export default function MortalityPage() {
                             </span>
                           </td>
                           <td className="px-5 py-4 text-sm text-slate-400">{r.recordedBy}</td>
+                          <td className="px-5 py-4">
+                            <button
+                              onClick={() => setConfirmModal({ isOpen: true, id: r.id, birds: r.numberDied })}
+                              className="flex items-center gap-1 text-xs font-bold text-red-400 hover:text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-xl transition-all">
+                              <Trash2 size={13} /> Delete
+                            </button>
+                          </td>
                         </motion.tr>
                       );
                     })}
@@ -199,13 +220,12 @@ export default function MortalityPage() {
                       <td className="px-5 py-4 font-black text-rose-500 text-lg">
                         {records.reduce((s, r) => s + r.numberDied, 0)}
                       </td>
-                      <td colSpan={2} />
+                      <td colSpan={3} />
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100">
                   <span className="text-sm text-slate-500 font-medium">
@@ -240,7 +260,6 @@ export default function MortalityPage() {
         </>
       )}
 
-      {/* By Cause Tab */}
       {activeTab === 'By Cause' && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
           className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
@@ -262,8 +281,7 @@ export default function MortalityPage() {
                         <Cell key={index} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      formatter={(val) => `${val} birds`}
+                    <Tooltip formatter={(val) => `${val} birds`}
                       contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0' }} />
                     <Legend />
                   </PieChart>
@@ -309,7 +327,7 @@ export default function MortalityPage() {
         </motion.div>
       )}
 
-      {/* Modal */}
+      {/* Add Modal */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -406,10 +424,14 @@ export default function MortalityPage() {
                     className="flex-1 py-3 rounded-2xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50">
                     Cancel
                   </button>
-                  <motion.button type="submit"
-                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                    className="flex-1 py-3 rounded-2xl bg-rose-500 text-white font-bold hover:bg-rose-600 shadow-lg shadow-rose-200">
-                    Record Deaths
+                  <motion.button type="submit" disabled={submitting}
+                    whileHover={{ scale: submitting ? 1 : 1.01 }}
+                    whileTap={{ scale: submitting ? 1 : 0.99 }}
+                    className="flex-1 py-3 rounded-2xl bg-rose-500 text-white font-bold hover:bg-rose-600 shadow-lg shadow-rose-200 disabled:opacity-60 flex items-center justify-center gap-2">
+                    {submitting
+                      ? <><div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" /> Please wait...</>
+                      : 'Record Deaths'
+                    }
                   </motion.button>
                 </div>
               </form>
@@ -417,6 +439,16 @@ export default function MortalityPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, id: null, birds: 0 })}
+        onConfirm={handleDelete}
+        title="Delete Mortality Record?"
+        message={`This will permanently delete this record and restore ${confirmModal.birds} bird(s) back to the flock count.`}
+        confirmText="Yes, Delete"
+        type="danger"
+      />
     </div>
   );
 }

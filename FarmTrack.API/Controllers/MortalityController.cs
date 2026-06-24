@@ -22,7 +22,8 @@ namespace FarmTrack.API.Controllers
         {
             var userId = UserHelper.GetUserId(User);
             var records = await _mortalityRepo.GetAllWithFlockAsync(userId);
-            return Ok(records.Select(m => new {
+            return Ok(records.Select(m => new
+            {
                 id = m.Id,
                 flockId = m.FlockId,
                 flockName = m.Flock?.BatchName ?? "",
@@ -79,6 +80,29 @@ namespace FarmTrack.API.Controllers
             await _mortalityRepo.SaveChangesAsync();
             return Ok(new { message = "Mortality recorded", record.Id, newAliveBirds = flock.AliveBirds });
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = UserHelper.GetUserId(User);
+            var record = await _mortalityRepo.GetByIdAsync(id);
+            if (record == null || record.UserId != userId)
+                return NotFound(new { message = "Record not found" });
+
+            var flock = await _flockRepo.GetByIdAsync(record.FlockId);
+            if (flock != null)
+            {
+                flock.AliveBirds += record.NumberDied;
+                flock.UpdatedAt = DateTime.UtcNow;
+                _flockRepo.Update(flock);
+            }
+
+            _mortalityRepo.Delete(record);
+            await _mortalityRepo.SaveChangesAsync();
+            return Ok(new { message = "Mortality record deleted" });
+        }
+
+
     }
 
     public class CreateMortalityRequest

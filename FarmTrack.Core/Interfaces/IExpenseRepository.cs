@@ -1,4 +1,6 @@
-﻿using FarmTrack.Core.Entities;
+﻿
+
+using FarmTrack.Core.Entities;
 
 namespace FarmTrack.Core.Interfaces
 {
@@ -7,5 +9,6 @@ namespace FarmTrack.Core.Interfaces
         Task<IEnumerable<Expense>> GetByMonthAsync(int month, int year, string userId);
         Task<decimal> GetTotalExpensesThisMonthAsync(string userId);
         Task<IEnumerable<Expense>> GetByDateRangeAsync(DateTime from, DateTime to, string userId);
+        Task<IEnumerable<Expense>> GetAllByUserAsync(string userId);
     }
 }
